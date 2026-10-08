@@ -1,0 +1,120 @@
+rules_version = '2';
+
+// Reglas de seguridad del Juego Matemático. Despliegue: `npx firebase deploy --only firestore:rules`
+//
+//   users/{uid}                  récords y nombre del alumno (solo su dueño)
+//   users/{uid}/saves/{slot}     partida en curso (solo su dueño)
+//   rooms/{code}                 sala del profesor
+//   rooms/{code}/players/{uid}   métricas de cada alumno (escribe el alumno, lee el alumno y el profesor)
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isUser(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isIntIn(v, min, max) {
+      return v is int && v >= min && v <= max;
+    }
+
+    match /users/{uid} {
+      allow read, write: if isUser(uid);
+
+      match /saves/{slot} {
+        allow read, write: if isUser(uid);
+      }
+    }
+
+    match /rooms/{code} {
+      function isOwner() {
+        return signedIn() && resource.data.teacherId == request.auth.uid;
+      }
+
+      // Cualquier usuario con el código puede comprobar que la sala existe, pero no listar salas ajenas.
+      allow get: if signedIn();
+      allow list: if isOwner();
+
+      allow create: if signedIn()
+        && code.matches('^[A-HJKMNP-Z2-9]{6}$')
+        && request.resource.data.keys().hasOnly(['name', 'teacherId', 'status', 'createdAt'])
+        && request.resource.data.teacherId == request.auth.uid
+        && request.resource.data.status == 'open'
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 40
+        && request.resource.data.createdAt == request.time;
+
+      allow update: if isOwner()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'status'])
+        && request.resource.data.status in ['open', 'closed']
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 40;
+
+      allow delete: if isOwner();
+
+      match /players/{uid} {
+        function room() {
+          return get(/databases/$(database)/documents/rooms/$(code)).data;
+        }
+
+        function isTeacher() {
+          return signedIn() && room().teacherId == request.auth.uid;
+        }
+
+        function roomIsOpen() {
+          return room().status == 'open';
+        }
+
+        function isValidPlayer(d) {
+          return d.name is string && d.name.size() >= 1 && d.name.size() <= 24
+            && d.status in ['waiting', 'playing', 'finished']
+            && isIntIn(d.score, 0, 1000000)
+            && isIntIn(d.level, 1, 4)
+            && isIntIn(d.lives, 0, 3)
+            && isIntIn(d.totalCorrect, 0, 1000000)
+            && isIntIn(d.totalAnswered, 0, 1000000)
+            && d.totalCorrect <= d.totalAnswered
+            && isIntIn(d.gamesPlayed, 0, 1000000)
+            && isIntIn(d.bestScore, 0, 1000000)
+            && isIntIn(d.bestLevel, 0, 4)
+            && isIntIn(d.correctAllGames, 0, 100000000)
+            && isIntIn(d.answeredAllGames, 0, 100000000)
+            && d.correctAllGames <= d.answeredAllGames
+            && d.updatedAt == request.time;
+        }
+
+        allow read: if isUser(uid) || isTeacher();
+
+        allow create: if isUser(uid)
+          && roomIsOpen()
+          && request.resource.data.keys().hasOnly([
+            'name', 'status', 'score', 'level', 'lives', 'totalCorrect', 'totalAnswered',
+            'gamesPlayed', 'bestScore', 'bestLevel', 'correctAllGames', 'answeredAllGames',
+            'joinedAt', 'updatedAt'
+          ])
+          && isValidPlayer(request.resource.data)
+          && request.resource.data.gamesPlayed == 0
+          && request.resource.data.joinedAt == request.time;
+
+        allow update: if isUser(uid)
+          && roomIsOpen()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'name', 'status', 'score', 'level', 'lives', 'totalCorrect', 'totalAnswered',
+            'gamesPlayed', 'bestScore', 'bestLevel', 'correctAllGames', 'answeredAllGames',
+            'updatedAt'
+          ])
+          && isValidPlayer(request.resource.data)
+          // Los acumulados solo crecen, y de partida en partida.
+          && request.resource.data.gamesPlayed in [resource.data.gamesPlayed, resource.data.gamesPlayed + 1]
+          && request.resource.data.bestScore >= resource.data.bestScore
+          && request.resource.data.answeredAllGames >= resource.data.answeredAllGames;
+
+        // El profesor puede expulsar a un alumno.
+        allow delete: if isTeacher();
+      }
+    }
+  }
+}

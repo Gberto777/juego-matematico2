@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useReducer, useState } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import {
+  EMPTY_RECORDS,
   createInitialState,
   gameReducer,
   isNewHighScore,
@@ -10,15 +11,7 @@ import {
   type GameStatus,
 } from '../utils/gameLogic'
 import { randomSeed, type Equation, type Level } from '../utils/mathUtils'
-import {
-  clearSavedGame,
-  getDefaultStorage,
-  loadRecords,
-  loadSavedGame,
-  saveGame,
-  saveRecords,
-  type KeyValueStorage,
-} from '../utils/storage'
+import type { GameRepository, StoredProgress } from '../utils/storage'
 
 export interface UseGameLogicOptions {
   /** Nivel con el que empieza la partida (por defecto 1). */
@@ -26,10 +19,10 @@ export interface UseGameLogicOptions {
   /** Semilla fija para partidas reproducibles (útil en tests). */
   seed?: number
   /**
-   * Dónde guardar récords y partida en curso. Por defecto localStorage;
-   * `null` desactiva la persistencia.
+   * Dónde guardar récords y partida en curso (Firestore en la app). Sin repositorio
+   * no se persiste nada. Debe ser estable entre renders (memoizado).
    */
-  storage?: KeyValueStorage | null
+  repository?: GameRepository | null
 }
 
 export interface UseGameLogicResult {
@@ -44,6 +37,8 @@ export interface UseGameLogicResult {
   isActive: boolean
   /** true si la partida en curso se recuperó del almacenamiento al cargar la página. */
   wasRestored: boolean
+  /** true mientras se cargan récords y partida guardada; no se debe empezar a jugar aún. */
+  isLoading: boolean
   correctInLevel: number
   totalCorrect: number
   totalAnswered: number
@@ -60,47 +55,67 @@ export interface UseGameLogicResult {
   goToMenu: () => void
 }
 
-interface InitialGame {
-  state: GameState
-  restored: boolean
-}
-
-function loadInitialGame(storage: KeyValueStorage | null, seed?: number, level?: Level): InitialGame {
-  const records = loadRecords(storage)
-  const saved = loadSavedGame(storage)
-  if (saved) {
+/** Estado con el que arranca el juego una vez leído el almacenamiento. */
+function stateFromProgress({ records, savedGame }: StoredProgress, seed?: number, level?: Level): GameState {
+  if (savedGame) {
     // Los récords guardados aparte prevalecen si son mayores que los de la partida.
-    const merged = updateRecords(records, saved.records.highScore, saved.records.maxLevel)
-    return { state: { ...saved, records: merged }, restored: true }
+    const merged = updateRecords(records, savedGame.records.highScore, savedGame.records.maxLevel)
+    return { ...savedGame, records: merged }
   }
-  return { state: createInitialState(seed ?? randomSeed(), level, records), restored: false }
+  return createInitialState(seed ?? randomSeed(), level, records)
 }
 
-export function useGameLogic({
-  initialLevel,
-  seed,
-  storage: storageOption,
-}: UseGameLogicOptions = {}): UseGameLogicResult {
-  const storage = storageOption === undefined ? getDefaultStorage() : storageOption
-
-  // Se calcula una sola vez: el estado inicial y si venía de una partida guardada.
-  const [initial] = useState(() => loadInitialGame(storage, seed, initialLevel))
-  const [state, dispatch] = useReducer(gameReducer, initial.state)
-  const [isActive, setIsActive] = useState(initial.restored)
-  const [wasRestored, setWasRestored] = useState(initial.restored)
-
-  useEffect(() => {
-    saveRecords(storage, state.records)
-  }, [storage, state.records])
+export function useGameLogic({ initialLevel, seed, repository = null }: UseGameLogicOptions = {}): UseGameLogicResult {
+  const [state, dispatch] = useReducer(gameReducer, undefined, () =>
+    createInitialState(seed ?? randomSeed(), initialLevel, EMPTY_RECORDS),
+  )
+  const [isActive, setIsActive] = useState(false)
+  const [wasRestored, setWasRestored] = useState(false)
+  const [isLoading, setIsLoading] = useState(repository !== null)
+  // Último valor escrito (o leído) en el repositorio, para no repetir escrituras idénticas.
+  const persisted = useRef<{ records: GameRecords | null; game: GameState | null }>({ records: null, game: null })
+  // seed e initialLevel solo importan en la carga inicial.
+  const initialOptions = useRef({ seed, initialLevel })
 
   useEffect(() => {
-    if (isActive && state.status === 'playing') {
-      saveGame(storage, state)
-    } else {
-      // Sin partida activa o con la partida terminada no hay nada que recuperar.
-      clearSavedGame(storage)
+    if (!repository) return
+    let cancelled = false
+    repository
+      .load()
+      .catch((error: unknown): StoredProgress => {
+        console.warn('No se pudo cargar el progreso guardado', error)
+        return { records: EMPTY_RECORDS, savedGame: null }
+      })
+      .then((progress) => {
+        if (cancelled) return
+        const loaded = stateFromProgress(progress, initialOptions.current.seed, initialOptions.current.initialLevel)
+        const restored = progress.savedGame !== null
+        persisted.current = { records: loaded.records, game: restored ? loaded : null }
+        dispatch({ type: 'load', state: loaded })
+        setIsActive(restored)
+        setWasRestored(restored)
+        setIsLoading(false)
+      })
+    return () => {
+      cancelled = true
     }
-  }, [storage, state, isActive])
+  }, [repository])
+
+  useEffect(() => {
+    if (!repository || isLoading || persisted.current.records === state.records) return
+    persisted.current.records = state.records
+    repository.saveRecords(state.records).catch((error: unknown) => console.warn('No se pudieron guardar los récords', error))
+  }, [repository, isLoading, state.records])
+
+  useEffect(() => {
+    if (!repository || isLoading) return
+    // Sin partida activa o con la partida terminada no hay nada que recuperar.
+    const game = isActive && state.status === 'playing' ? state : null
+    if (persisted.current.game === game) return
+    persisted.current.game = game
+    const write = game ? repository.saveGame(game) : repository.clearSavedGame()
+    write.catch((error: unknown) => console.warn('No se pudo guardar la partida', error))
+  }, [repository, isLoading, state, isActive])
 
   const startGame = useCallback(
     (level?: Level) => {
@@ -130,6 +145,7 @@ export function useGameLogic({
     isGameOver: state.status === 'game-over',
     isActive,
     wasRestored,
+    isLoading,
     correctInLevel: state.correctInLevel,
     totalCorrect: state.totalCorrect,
     totalAnswered: state.totalAnswered,

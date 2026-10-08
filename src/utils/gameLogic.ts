@@ -51,6 +51,8 @@ export interface GameState {
 export type GameAction =
   | { type: 'submit-answer'; answer: string | number }
   | { type: 'reset'; seed: number; level?: Level }
+  /** Sustituye el estado por uno cargado del almacenamiento (partida guardada o récords). */
+  | { type: 'load'; state: GameState }
 
 export function createInitialState(
   seed: number,
@@ -157,5 +159,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'reset':
       // Los récords se conservan al empezar una nueva partida.
       return createInitialState(action.seed, action.level, state.records)
+    case 'load':
+      return action.state
   }
 }

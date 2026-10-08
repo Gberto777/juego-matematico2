@@ -7,47 +7,6 @@ import {
 } from './gameLogic'
 import { MAX_LEVEL, calculate, isValidLevel, type Equation } from './mathUtils'
 
-/** Subconjunto de la API de Storage que usamos (permite inyectar un doble en tests). */
-export type KeyValueStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
-
-export const RECORDS_KEY = 'juego-matematico:records:v1'
-export const SAVED_GAME_KEY = 'juego-matematico:partida:v1'
-
-/** localStorage si está disponible (puede lanzar en modo privado o con cookies bloqueadas). */
-export function getDefaultStorage(): KeyValueStorage | null {
-  try {
-    return typeof window !== 'undefined' ? window.localStorage : null
-  } catch {
-    return null
-  }
-}
-
-function readJson(storage: KeyValueStorage | null, key: string): unknown {
-  if (!storage) return null
-  try {
-    const raw = storage.getItem(key)
-    return raw === null ? null : JSON.parse(raw)
-  } catch {
-    return null
-  }
-}
-
-function writeJson(storage: KeyValueStorage | null, key: string, value: unknown): void {
-  try {
-    storage?.setItem(key, JSON.stringify(value))
-  } catch {
-    // Cuota llena o almacenamiento bloqueado: el juego sigue funcionando sin guardar.
-  }
-}
-
-function remove(storage: KeyValueStorage | null, key: string): void {
-  try {
-    storage?.removeItem(key)
-  } catch {
-    // Ignorado por la misma razón que en writeJson.
-  }
-}
-
 // --- Validación de datos leídos (pueden estar corruptos o haber sido editados a mano) ---
 
 type UnknownRecord = Record<string, unknown>
@@ -119,28 +78,46 @@ export function isSavedGame(v: unknown): v is GameState {
 
 // --- API pública ---
 
-export function loadRecords(storage: KeyValueStorage | null): GameRecords {
-  const value = readJson(storage, RECORDS_KEY)
-  return isGameRecords(value) ? value : EMPTY_RECORDS
+/** Datos persistidos de un jugador: récords y, si la hay, la partida en curso. */
+export interface StoredProgress {
+  records: GameRecords
+  savedGame: GameState | null
 }
 
-export function saveRecords(storage: KeyValueStorage | null, records: GameRecords): void {
-  writeJson(storage, RECORDS_KEY, records)
+/**
+ * Dónde se guardan récords y partida en curso. Es asíncrono porque la implementación
+ * real es Firestore (ver src/firebase/gameRepository.ts); en tests se usa la de memoria.
+ */
+export interface GameRepository {
+  load(): Promise<StoredProgress>
+  saveRecords(records: GameRecords): Promise<void>
+  saveGame(state: GameState): Promise<void>
+  clearSavedGame(): Promise<void>
 }
 
-/** Devuelve la partida en curso guardada, o null si no hay ninguna válida (y limpia la corrupta). */
-export function loadSavedGame(storage: KeyValueStorage | null): GameState | null {
-  const value = readJson(storage, SAVED_GAME_KEY)
-  if (isSavedGame(value)) return value
-  // Ausente, JSON roto o datos inválidos: se elimina para no volver a intentarlo.
-  remove(storage, SAVED_GAME_KEY)
-  return null
+/** Normaliza datos leídos del almacenamiento: lo que no sea válido se descarta. */
+export function parseProgress(records: unknown, savedGame: unknown): StoredProgress {
+  return {
+    records: isGameRecords(records) ? records : EMPTY_RECORDS,
+    savedGame: isSavedGame(savedGame) ? savedGame : null,
+  }
 }
 
-export function saveGame(storage: KeyValueStorage | null, state: GameState): void {
-  writeJson(storage, SAVED_GAME_KEY, state)
-}
-
-export function clearSavedGame(storage: KeyValueStorage | null): void {
-  remove(storage, SAVED_GAME_KEY)
+/** Repositorio en memoria (tests y modo sin conexión a Firebase dentro de una misma sesión). */
+export function createMemoryRepository(initial: { records?: unknown; savedGame?: unknown } = {}) {
+  const data = { records: initial.records ?? null, savedGame: initial.savedGame ?? null }
+  const repository: GameRepository & { data: typeof data } = {
+    data,
+    load: async () => parseProgress(structuredClone(data.records), structuredClone(data.savedGame)),
+    saveRecords: async (records) => {
+      data.records = structuredClone(records)
+    },
+    saveGame: async (state) => {
+      data.savedGame = structuredClone(state)
+    },
+    clearSavedGame: async () => {
+      data.savedGame = null
+    },
+  }
+  return repository
 }
