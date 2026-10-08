@@ -1,0 +1,21 @@
+{
+  "name": "Juego Matemático",
+  "short_name": "Matemáticas",
+  "description": "Juego educativo para practicar sumas, restas y multiplicaciones subiendo de nivel.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#6366f1",
+  "theme_color": "#6366f1",
+  "categories": ["education", "games", "kids"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
