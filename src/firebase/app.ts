@@ -1,5 +1,5 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
-import { connectAuthEmulator, getAuth, signInAnonymously, type Auth, type User } from 'firebase/auth'
+import { connectAuthEmulator, getAuth, signInAnonymously, signOut, type Auth, type User } from 'firebase/auth'
 import {
   connectFirestoreEmulator,
   initializeFirestore,
@@ -54,12 +54,48 @@ export function getFirebase(): FirebaseServices {
   return services
 }
 
-/**
- * Devuelve el usuario actual, iniciando sesión anónima si hace falta. La sesión se
- * conserva en el navegador, así que alumno y profesor mantienen su identidad al recargar.
- */
-export async function ensureSignedIn(): Promise<User> {
-  const { auth } = getFirebase()
+// Errores con los que la sesión guardada ya no sirve (p. ej. el usuario anónimo se borró en la consola).
+const DEAD_SESSION_CODES = new Set(['auth/user-token-expired', 'auth/user-disabled', 'auth/user-not-found', 'auth/invalid-user-token'])
+
+let pendingSignIn: Promise<User> | null = null
+
+async function signIn(auth: Auth): Promise<User> {
   await auth.authStateReady()
-  return auth.currentUser ?? (await signInAnonymously(auth)).user
+  const saved = auth.currentUser
+  if (saved) {
+    try {
+      // Sin un token válido Firestore enviaría las peticiones sin request.auth y las reglas las rechazarían.
+      await saved.getIdToken()
+      return saved
+    } catch (error) {
+      if (!DEAD_SESSION_CODES.has((error as { code?: string }).code ?? '')) throw error
+      console.warn('La sesión guardada ya no es válida; se crea una nueva.', error)
+      await signOut(auth)
+    }
+  }
+  const { user } = await signInAnonymously(auth)
+  await user.getIdToken()
+  return user
+}
+
+/**
+ * Devuelve el usuario actual con un token válido, iniciando sesión anónima si hace falta.
+ * La sesión se conserva en el navegador, así que alumno y profesor mantienen su identidad al recargar.
+ */
+export function ensureSignedIn(): Promise<User> {
+  const { auth } = getFirebase()
+  pendingSignIn ??= signIn(auth).finally(() => {
+    pendingSignIn = null
+  })
+  return pendingSignIn
+}
+
+/** Mensaje para el usuario a partir de un error de Firestore. */
+export function describeFirestoreError(error: unknown, fallback: string): string {
+  const code = (error as { code?: string } | null)?.code
+  if (code === 'permission-denied') {
+    return `${fallback} Firestore rechazó la operación: comprueba que las reglas están publicadas (npm run deploy:rules).`
+  }
+  if (code === 'unavailable') return `${fallback} No hay conexión con el servidor.`
+  return fallback
 }

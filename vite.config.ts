@@ -1,6 +1,6 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -15,5 +15,9 @@ export default defineConfig({
       },
     },
     chunkSizeWarningLimit: 800,
+  },
+  test: {
+    // Los tests no deben usar el proyecto real aunque exista .env.local.
+    env: { VITE_FIREBASE_PROJECT_ID: '', VITE_FIREBASE_API_KEY: '', VITE_FIREBASE_USE_EMULATORS: '' },
   },
 })

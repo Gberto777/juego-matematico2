@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "deploy:rules": "npx firebase-tools deploy --only firestore:rules,firestore:indexes"
   },
   "dependencies": {
     "firebase": "^12.19.0",

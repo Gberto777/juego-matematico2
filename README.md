@@ -46,8 +46,11 @@ La persistencia y el modo aula usan **Firebase** (Authentication anónima + Clou
 
    ```sh
    npx firebase-tools login
-   npx firebase-tools deploy --only firestore:rules --project <id-del-proyecto>
+   npm run deploy:rules   # usa el proyecto de .firebaserc
    ```
+
+   Si no se publican, Firestore aplica sus reglas por defecto (denegar todo) y la app muestra
+   «Missing or insufficient permissions» al crear salas, cargarlas o guardar partidas.
 
 Sin `.env.local` la app sigue funcionando en modo individual, pero sin guardar nada y sin modo aula.
 

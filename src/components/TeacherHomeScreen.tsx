@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { getFirebase } from '../firebase/app'
+import { describeFirestoreError, getFirebase } from '../firebase/app'
 import { createRoom } from '../firebase/rooms'
 import { useTeacherRooms } from '../hooks/useRoomData'
 import { ROOM_NAME_MAX_LENGTH, normalizeName } from '../utils/room'
@@ -29,7 +29,7 @@ function TeacherHomeScreen({ uid, onOpenRoom, onBack }: TeacherHomeScreenProps) 
       onOpenRoom(await createRoom(getFirebase().db, uid, roomName))
     } catch (e) {
       console.error(e)
-      setError(e instanceof Error ? e.message : 'No se pudo crear la sala.')
+      setError(e instanceof Error && !('code' in e) ? e.message : describeFirestoreError(e, 'No se pudo crear la sala.'))
       setIsCreating(false)
     }
   }
@@ -71,7 +71,7 @@ function TeacherHomeScreen({ uid, onOpenRoom, onBack }: TeacherHomeScreenProps) 
       <div className="w-full rounded-3xl bg-indigo-950/30 p-4 text-left ring-1 ring-white/20 backdrop-blur">
         <h2 className="mb-3 text-sm font-semibold tracking-widest text-amber-200 uppercase">Tus salas</h2>
         {rooms.status === 'loading' && <p className="text-indigo-100">⏳ Cargando…</p>}
-        {rooms.status === 'error' && <p className="text-rose-200">⚠️ No se pudieron cargar tus salas.</p>}
+        {rooms.status === 'error' && <p className="text-rose-200">⚠️ {describeFirestoreError(rooms.error, 'No se pudieron cargar tus salas.')}</p>}
         {rooms.status === 'ready' && rooms.data.length === 0 && (
           <p className="text-indigo-100">Todavía no has creado ninguna sala.</p>
         )}
