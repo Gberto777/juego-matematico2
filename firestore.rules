@@ -1,13 +1,23 @@
 rules_version = '2';
 
-// Reglas de seguridad del Juego Matemático. Despliegue: `npx firebase deploy --only firestore:rules`
+// Reglas de seguridad del Juego Matemático (Actividad 3: seguridad estricta).
+// Despliegue: `npm run deploy:rules`
 //
 //   users/{uid}                  récords y nombre del alumno (solo su dueño)
 //   users/{uid}/saves/{slot}     partida en curso (solo su dueño)
 //   rooms/{code}                 sala del profesor
 //   rooms/{code}/players/{uid}   métricas de cada alumno (escribe el alumno, lee el alumno y el profesor)
+//
+// Principios:
+//   1. Autenticación obligatoria: sin `request.auth` no se lee ni se escribe nada.
+//   2. Lista blanca de campos: solo se aceptan las claves esperadas.
+//   3. Validación de tipos y rangos: textos con longitud máxima y números enteros >= 0,
+//      para evitar inyecciones de código, desbordamientos y valores negativos.
+//   4. Todo lo que no está permitido explícitamente queda denegado.
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // --- Utilidades ---
 
     function signedIn() {
       return request.auth != null;
@@ -17,9 +27,27 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    // Entero (nunca texto ni decimal) dentro de [min, max].
     function isIntIn(v, min, max) {
       return v is int && v >= min && v <= max;
     }
+
+    // Entero obligatorio mayor o igual que cero.
+    function isNonNegativeInt(v) {
+      return v is int && v >= 0;
+    }
+
+    // Texto no vacío de como máximo `max` caracteres.
+    function isShortString(v, max) {
+      return v is string && v.size() >= 1 && v.size() <= max;
+    }
+
+    // Denegación por defecto para cualquier ruta no listada abajo.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Datos privados de cada usuario ---
 
     match /users/{uid} {
       allow read, write: if isUser(uid);
@@ -29,31 +57,43 @@ service cloud.firestore {
       }
     }
 
+    // --- Salas ---
+
     match /rooms/{code} {
       function isOwner() {
         return signedIn() && resource.data.teacherId == request.auth.uid;
       }
 
-      // Cualquier usuario con el código puede comprobar que la sala existe, pero no listar salas ajenas.
+      // El código de sala (id del documento) tiene exactamente 6 caracteres del alfabeto sin ambigüedades.
+      function isValidCode() {
+        return code.size() == 6 && code.matches('^[A-HJKMNP-Z2-9]{6}$');
+      }
+
+      // Cualquier usuario autenticado con el código puede comprobar que la sala existe,
+      // pero solo el profesor puede listar sus propias salas.
       allow get: if signedIn();
       allow list: if isOwner();
 
       allow create: if signedIn()
-        && code.matches('^[A-HJKMNP-Z2-9]{6}$')
-        && request.resource.data.keys().hasOnly(['name', 'teacherId', 'status', 'createdAt'])
+        && isValidCode()
+        && request.resource.data.keys().hasOnly(['name', 'teacherId', 'createdBy', 'status', 'createdAt'])
+        && request.resource.data.keys().hasAll(['name', 'teacherId', 'createdBy', 'status', 'createdAt'])
+        // Nadie puede crear una sala a nombre de otro usuario.
+        && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.teacherId == request.auth.uid
         && request.resource.data.status == 'open'
-        && request.resource.data.name is string
-        && request.resource.data.name.size() <= 40
+        && isShortString(request.resource.data.name, 40)
         && request.resource.data.createdAt == request.time;
 
+      // El creador y el código no se pueden cambiar; solo el nombre y el estado.
       allow update: if isOwner()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'status'])
         && request.resource.data.status in ['open', 'closed']
-        && request.resource.data.name is string
-        && request.resource.data.name.size() <= 40;
+        && isShortString(request.resource.data.name, 40);
 
       allow delete: if isOwner();
+
+      // --- Alumnos de la sala ---
 
       match /players/{uid} {
         function room() {
@@ -69,11 +109,13 @@ service cloud.firestore {
         }
 
         function isValidPlayer(d) {
-          return d.name is string && d.name.size() >= 1 && d.name.size() <= 24
+          // Nombre: texto de 1 a 20 caracteres.
+          return isShortString(d.name, 20)
             && d.status in ['waiting', 'playing', 'finished']
-            && isIntIn(d.score, 0, 1000000)
-            && isIntIn(d.level, 1, 4)
-            && isIntIn(d.lives, 0, 3)
+            // level, lives y score: enteros obligatorios >= 0 (con techo razonable).
+            && isNonNegativeInt(d.level) && d.level <= 4
+            && isNonNegativeInt(d.lives) && d.lives <= 3
+            && isNonNegativeInt(d.score) && d.score <= 1000000
             && isIntIn(d.totalCorrect, 0, 1000000)
             && isIntIn(d.totalAnswered, 0, 1000000)
             && d.totalCorrect <= d.totalAnswered

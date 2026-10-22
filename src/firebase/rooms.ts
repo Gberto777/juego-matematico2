@@ -22,7 +22,7 @@ import { generateRoomCode, type Player, type PlayerStatus, type Room, type RoomS
  * Modelo de datos del modo aula:
  *
  *   rooms/{code}                 Sala creada por un profesor. El id del documento ES el código.
- *     name, teacherId, status ('open' | 'closed'), createdAt
+ *     name, teacherId, createdBy, status ('open' | 'closed'), createdAt
  *   rooms/{code}/players/{uid}   Un documento por alumno, escrito solo por ese alumno.
  *     name, status, métricas de la partida actual y acumulados (ver Player en utils/room.ts)
  *
@@ -84,7 +84,7 @@ export async function createRoom(db: Firestore, teacherId: string, name: string)
     const created = await runTransaction(db, async (tx) => {
       const ref = roomRef(db, code)
       if ((await tx.get(ref)).exists()) return false
-      tx.set(ref, { name, teacherId, status: 'open', createdAt: serverTimestamp() })
+      tx.set(ref, { name, teacherId, createdBy: teacherId, status: 'open', createdAt: serverTimestamp() })
       return true
     })
     if (created) return code

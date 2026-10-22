@@ -4,7 +4,7 @@ export const ROOM_CODE_LENGTH = 6
 /** Sin 0/O ni 1/I/L para que el código se pueda dictar y copiar de la pizarra sin errores. */
 export const ROOM_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
 
-export const PLAYER_NAME_MAX_LENGTH = 24
+export const PLAYER_NAME_MAX_LENGTH = 20
 export const ROOM_NAME_MAX_LENGTH = 40
 
 /** Un alumno se considera conectado si ha enviado datos en este intervalo. */
