@@ -4,8 +4,8 @@ import { defineConfig } from 'vitest/config'
 
 // https://vite.dev/config/
 export default defineConfig({
-  // Ruta del repositorio en GitHub Pages: https://<usuario>.github.io/juego-matematico/
-  base: '/',
+  // Ruta del repositorio en GitHub Pages: https://<usuario>.github.io/juego-matematico2/
+  base: '/juego-matematico2/',
   plugins: [react(), tailwindcss()],
   build: {
     rolldownOptions: {
