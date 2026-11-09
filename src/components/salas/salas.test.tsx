@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { CambiosSala, DatosSala, SalaConResumen, ServicioSalas } from '../../supabase/servicioSalas'
-import type { EstadoSala, MiembroSala, NuevaRespuesta, Partida, Sala, Usuario } from '../../supabase/tipos'
+import type { EstadoSala, MiembroSala, NuevaRespuesta, Partida, Usuario } from '../../supabase/tipos'
 import MisSalas from './MisSalas'
 import PanelDocente from './PanelDocente'
 import PantallaSalaAlumno from './PantallaSalaAlumno'
@@ -15,7 +15,7 @@ function usuario(id: string, rol: Usuario['rol']): Usuario {
 const DOCENTE = usuario('profe', 'docente')
 const ALUMNO = usuario('ana', 'alumno')
 
-function sala(datos: Partial<Sala> = {}): SalaConResumen {
+function sala(datos: Partial<SalaConResumen> = {}): SalaConResumen {
   return {
     id: 's1',
     codigo: 'SUM-1234',
