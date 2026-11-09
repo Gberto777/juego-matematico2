@@ -42,6 +42,12 @@ La web, la app móvil y el juego 3D de Godot comparten un solo backend en **Supa
 | `npm run db:push` | Sube las migraciones al proyecto enlazado (`npx supabase link` antes) |
 | `npm run db:functions` | Despliega la función Edge `admin-crear-usuario` |
 
+### Página de inicio (`#/`)
+
+Página informativa de MathQuest en "capítulos de color": cada sección tiene el color de una región del juego (bosque, cueva, volcán y la corona del castillo). En la portada se puede jugar el primer portal: tres puertas, una correcta, y cada dos aciertos el portal pasa a la región siguiente (`src/utils/portales.ts`, que imita los distractores de Godot). Secciones: regiones, dónde se juega (juego 3D, práctica web, sala de clase), así se juega, descargas, preguntas frecuentes y un formulario para entrar con el código de la sala.
+
+Las imágenes de `public/inicio/` son capturas reales de MathQuest Runner hechas con Godot 4.7 (modelos 3D de Kenney, CC0). Para rehacerlas, abre el proyecto de Godot y ejecuta un script que cargue `res://scenes/main.tscn` con `GameState.nivel_inicial` en 1–4 y guarde `root.get_texture().get_image()`.
+
 ### Cuentas y roles
 
 | Ruta | Pantalla | Quién |
@@ -119,7 +125,7 @@ npm run dev
 
 | Ruta | Pantalla |
 | --- | --- |
-| `#/` | Juego individual |
+| `#/practica` | Juego individual (práctica rápida) |
 | `#/profesor` | Crear sala y ver las salas propias |
 | `#/profesor/CODIGO` | Panel del profesor con los resultados en tiempo real |
 | `#/unirse/CODIGO` | El alumno escribe su nombre (y el código, si no viene en el enlace) |

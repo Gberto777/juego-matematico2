@@ -3,9 +3,11 @@ import { parseRoute, routeToHash, type Route } from './routes'
 
 describe('rutas', () => {
   it.each<[string, Route]>([
-    ['', { name: 'solo' }],
-    ['#/', { name: 'solo' }],
-    ['#/desconocida', { name: 'solo' }],
+    ['', { name: 'home' }],
+    ['#/', { name: 'home' }],
+    ['#descargas', { name: 'home' }],
+    ['#/desconocida', { name: 'home' }],
+    ['#/practica', { name: 'solo' }],
     ['#/unirse', { name: 'join', code: '' }],
     ['#/unirse/abc234', { name: 'join', code: 'ABC234' }],
     ['#/sala/ABC234', { name: 'classroom', code: 'ABC234' }],
@@ -26,13 +28,14 @@ describe('rutas', () => {
     ['#/salas', { name: 'myRooms' }],
     ['#/salas/MIX-1234', { name: 'studentRoom', code: 'MIX-1234' }],
     ['#/salas/ABC234', { name: 'myRooms' }],
-    ['#/constructor', { name: 'solo' }],
-    ['#/__proto__', { name: 'solo' }],
+    ['#/constructor', { name: 'home' }],
+    ['#/__proto__', { name: 'home' }],
   ])('%j', (hash, route) => {
     expect(parseRoute(hash)).toEqual(route)
   })
 
   it.each<Route>([
+    { name: 'home' },
     { name: 'solo' },
     { name: 'join', code: '' },
     { name: 'join', code: 'ABC234' },

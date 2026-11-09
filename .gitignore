@@ -26,3 +26,6 @@ dist-ssr
 # Firebase
 .firebase/
 *-debug.log
+
+# Archivos de trabajo del inspector de diseño
+.taste-skill/

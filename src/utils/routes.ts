@@ -6,6 +6,9 @@ import { isValidRoomCode, normalizeRoomCode } from './room'
  * y en Nginx sin configuración extra, y para que recargar la página conserve la pantalla.
  */
 export type Route =
+  /** Página informativa de MathQuest. */
+  | { name: 'home' }
+  /** Práctica rápida (el minijuego). */
   | { name: 'solo' }
   | { name: 'join'; code: string }
   | { name: 'classroom'; code: string }
@@ -26,6 +29,7 @@ export type Route =
 
 /** Rutas sin parámetros: sección del hash → ruta. */
 const SIMPLE_ROUTES = {
+  practica: { name: 'solo' },
   entrar: { name: 'login' },
   registro: { name: 'register' },
   recuperar: { name: 'forgotPassword' },
@@ -70,13 +74,14 @@ export function parseRoute(hash: string): Route {
     case 'profesor':
       return isValidRoomCode(code) ? { name: 'dashboard', code } : { name: 'teacher' }
     default:
-      return { name: 'solo' }
+      // Incluye #/ y los anclajes de la página de inicio (#descargas, #preguntas…).
+      return { name: 'home' }
   }
 }
 
 export function routeToHash(route: Route): string {
   switch (route.name) {
-    case 'solo':
+    case 'home':
       return '#/'
     case 'join':
       return route.code ? `#/unirse/${route.code}` : '#/unirse'

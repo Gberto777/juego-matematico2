@@ -226,7 +226,7 @@ describe('recuperar la contraseña', () => {
   it('al abrir el enlace del correo se va a "Nueva contraseña"', async () => {
     const usuario = perfil('alumno')
     const servicio = new ServicioFalso([usuario])
-    abrir('#/', servicio)
+    abrir('#/practica', servicio)
     await screen.findByRole('link', { name: /entrar/i })
     servicio.emitir(usuario.id, true)
     await waitFor(() => expect(window.location.hash).toBe('#/restablecer'))
@@ -274,7 +274,7 @@ describe('botón de cuenta en la esquina', () => {
   it('sin sesión invita a entrar; con sesión muestra el nombre', async () => {
     const usuario = perfil('alumno', { nombre: 'Lucía' })
     const servicio = new ServicioFalso([usuario])
-    abrir('#/', servicio)
+    abrir('#/practica', servicio)
     expect((await screen.findByRole('link', { name: /entrar/i })).getAttribute('href')).toBe('#/entrar')
 
     servicio.emitir(usuario.id)
@@ -282,7 +282,7 @@ describe('botón de cuenta en la esquina', () => {
   })
 
   it('sin Supabase no aparece', () => {
-    abrir('#/', null)
+    abrir('#/practica', null)
     expect(screen.queryByRole('link', { name: /entrar/i })).toBeNull()
   })
 })

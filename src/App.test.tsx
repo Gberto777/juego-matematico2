@@ -10,7 +10,13 @@ afterEach(() => {
 })
 
 describe('App sin Firebase', () => {
+  it('la portada es la página informativa', () => {
+    render(<App />)
+    expect(screen.getByRole('heading', { level: 1, name: 'MathQuest: corre y calcula' })).toBeTruthy()
+  })
+
   it('el modo individual funciona sin guardar', () => {
+    window.location.hash = '#/practica'
     render(<App />)
     const start = screen.getByRole('button', { name: /comenzar juego/i })
     expect((start as HTMLButtonElement).disabled).toBe(false)

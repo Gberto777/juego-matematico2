@@ -8,6 +8,7 @@ import PantallaRecuperar from './components/cuenta/PantallaRecuperar'
 import PantallaRegistro from './components/cuenta/PantallaRegistro'
 import PantallaRestablecer, { EnlaceRecuperacionInvalido } from './components/cuenta/PantallaRestablecer'
 import PanelAdmin from './components/admin/PanelAdmin'
+import PaginaInicio from './components/inicio/PaginaInicio'
 import RequiereAcceso from './components/cuenta/RequiereAcceso'
 import MisSalas from './components/salas/MisSalas'
 import PanelDocente from './components/salas/PanelDocente'
@@ -195,6 +196,15 @@ function App({ servicioAuth, servicioUsuarios, servicioSalas }: AppProps) {
     [servicioUsuarios, servicioSalas],
   )
   const goResetPassword = useCallback(() => navigate({ name: 'resetPassword' }), [navigate])
+
+  // La página de inicio ocupa toda la pantalla, con su propio diseño.
+  if (route.name === 'home') {
+    return (
+      <AuthProvider servicio={servicio} alRecuperar={goResetPassword}>
+        <PaginaInicio />
+      </AuthProvider>
+    )
+  }
 
   return (
     <AuthProvider servicio={servicio} alRecuperar={goResetPassword}>
