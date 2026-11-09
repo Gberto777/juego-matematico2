@@ -7,7 +7,8 @@ import PantallaEntrar from './components/cuenta/PantallaEntrar'
 import PantallaRecuperar from './components/cuenta/PantallaRecuperar'
 import PantallaRegistro from './components/cuenta/PantallaRegistro'
 import PantallaRestablecer, { EnlaceRecuperacionInvalido } from './components/cuenta/PantallaRestablecer'
-import { PanelAdmin, PanelDocente } from './components/cuenta/Paneles'
+import PanelAdmin from './components/admin/PanelAdmin'
+import { PanelDocente } from './components/cuenta/Paneles'
 import RequiereAcceso from './components/cuenta/RequiereAcceso'
 import JoinRoomScreen from './components/JoinRoomScreen'
 import SecondaryButton from './components/SecondaryButton'
@@ -18,6 +19,7 @@ import TeacherHomeScreen from './components/TeacherHomeScreen'
 import { useFirebaseUser, type FirebaseUserState } from './hooks/useFirebaseUser'
 import { useHashRoute } from './hooks/useHashRoute'
 import { obtenerServicioAuth, type ServicioAuth } from './supabase/servicioAuth'
+import { obtenerServicioUsuarios, type ServicioUsuarios } from './supabase/servicioUsuarios'
 import { requisitoDe } from './utils/acceso'
 import type { Route } from './utils/routes'
 
@@ -48,7 +50,7 @@ function RequireUser({ user, onBack, children }: { user: FirebaseUserState; onBa
 }
 
 /** Pantallas de cuentas (Supabase), protegidas según la sesión y el rol. */
-function AccountScreen({ route }: { route: Route }) {
+function AccountScreen({ route, servicioUsuarios }: { route: Route; servicioUsuarios: ServicioUsuarios | null }) {
   const requisito = requisitoDe(route)
   switch (route.name) {
     case 'login':
@@ -66,7 +68,11 @@ function AccountScreen({ route }: { route: Route }) {
     case 'account':
       return <RequiereAcceso requisito={requisito}>{(usuario) => usuario && <PantallaCuenta usuario={usuario} />}</RequiereAcceso>
     case 'admin':
-      return <RequiereAcceso requisito={requisito}>{() => <PanelAdmin />}</RequiereAcceso>
+      return (
+        <RequiereAcceso requisito={requisito}>
+          {(usuario) => usuario && servicioUsuarios && <PanelAdmin servicio={servicioUsuarios} yo={usuario} />}
+        </RequiereAcceso>
+      )
     case 'teacherPanel':
       return <RequiereAcceso requisito={requisito}>{() => <PanelDocente />}</RequiereAcceso>
     default:
@@ -84,14 +90,21 @@ const ACCOUNT_ROUTES = new Set<Route['name']>([
   'teacherPanel',
 ])
 
-function Screen({ route, navigate, user }: { route: Route; navigate: Navigate; user: FirebaseUserState }) {
+interface ScreenProps {
+  route: Route
+  navigate: Navigate
+  user: FirebaseUserState
+  servicioUsuarios: ServicioUsuarios | null
+}
+
+function Screen({ route, navigate, user, servicioUsuarios }: ScreenProps) {
   const goSolo = useCallback(() => navigate({ name: 'solo' }), [navigate])
   const goJoin = useCallback(
     () => navigate({ name: 'join', code: 'code' in route ? route.code : '' }),
     [navigate, route],
   )
 
-  if (ACCOUNT_ROUTES.has(route.name)) return <AccountScreen route={route} />
+  if (ACCOUNT_ROUTES.has(route.name)) return <AccountScreen route={route} servicioUsuarios={servicioUsuarios} />
 
   if (route.name === 'solo') {
     // Se espera a la sesión para no empezar sin guardar y luego pisar la partida al cargar.
@@ -133,12 +146,18 @@ function Screen({ route, navigate, user }: { route: Route; navigate: Navigate; u
 interface AppProps {
   /** Para los tests: servicio de cuentas falso. Por defecto, Supabase (o null si no está configurado). */
   servicioAuth?: ServicioAuth | null
+  /** Para los tests: servicio falso del panel de administración. */
+  servicioUsuarios?: ServicioUsuarios | null
 }
 
-function App({ servicioAuth }: AppProps) {
+function App({ servicioAuth, servicioUsuarios }: AppProps) {
   const [route, navigate] = useHashRoute()
   const user = useFirebaseUser()
   const servicio = useMemo(() => (servicioAuth === undefined ? obtenerServicioAuth() : servicioAuth), [servicioAuth])
+  const usuarios = useMemo(
+    () => (servicioUsuarios === undefined ? obtenerServicioUsuarios() : servicioUsuarios),
+    [servicioUsuarios],
+  )
   const goResetPassword = useCallback(() => navigate({ name: 'resetPassword' }), [navigate])
 
   return (
@@ -161,7 +180,7 @@ function App({ servicioAuth }: AppProps) {
         )}
 
         <div className="relative z-10 flex w-full justify-center">
-          <Screen route={route} navigate={navigate} user={user} />
+          <Screen route={route} navigate={navigate} user={user} servicioUsuarios={usuarios} />
         </div>
       </main>
     </AuthProvider>

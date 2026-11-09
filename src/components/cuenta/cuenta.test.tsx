@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from '../../App'
 import type { ServicioAuth } from '../../supabase/servicioAuth'
+import type { ServicioUsuarios } from '../../supabase/servicioUsuarios'
 import type { Rol, Usuario } from '../../supabase/tipos'
 
 const PASSWORD = 'secreta123'
@@ -63,9 +64,20 @@ class ServicioFalso implements ServicioAuth {
   }
 }
 
+const servicioUsuariosVacio: ServicioUsuarios = {
+  listar: async () => [],
+  crear: async () => {
+    throw new Error('no se usa')
+  },
+  actualizar: async () => {
+    throw new Error('no se usa')
+  },
+  enviarRecuperacion: async () => {},
+}
+
 function abrir(hash: string, servicio: ServicioAuth | null) {
   window.location.hash = hash
-  return render(<App servicioAuth={servicio} />)
+  return render(<App servicioAuth={servicio} servicioUsuarios={servicio ? servicioUsuariosVacio : null} />)
 }
 
 function escribir(etiqueta: RegExp, valor: string) {
@@ -91,7 +103,7 @@ describe('rutas protegidas por rol', () => {
     escribir(/contraseña/i, PASSWORD)
     enviar(/entrar/i)
 
-    expect(await screen.findByRole('heading', { name: 'Panel de administración' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Usuarios' })).toBeTruthy()
     expect(servicio.iniciarSesion).toHaveBeenCalledWith('admin@prueba.test', PASSWORD)
   })
 

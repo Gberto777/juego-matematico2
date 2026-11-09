@@ -16,6 +16,12 @@ export const MENSAJES_ERROR: Record<string, string> = {
   PASSWORD_INVALIDA: 'La contraseña debe tener entre 8 y 72 caracteres.',
   ROL_INVALIDO: 'El rol no es válido.',
   EMAIL_YA_EXISTE: 'Ya existe una cuenta con ese correo.',
+  // Función Edge admin-crear-usuario
+  NO_AUTENTICADO: 'Tu sesión caducó. Vuelve a entrar.',
+  CUERPO_INVALIDO: 'Faltan datos de la cuenta.',
+  NO_SE_PUDO_CREAR: 'No se pudo crear la cuenta. Inténtalo de nuevo.',
+  NO_SE_PUDO_ASIGNAR_ROL: 'La cuenta se creó, pero no se pudo asignar el rol. Cámbialo desde la lista.',
+  CONFIGURACION_INCOMPLETA: 'El servidor no está bien configurado. Avisa al administrador del sistema.',
   // Salas
   SALA_NO_EXISTE: 'No existe ninguna sala con ese código.',
   SALA_CERRADA: 'La sala está cerrada. Pide a tu docente un código nuevo.',

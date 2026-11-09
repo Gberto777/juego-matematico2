@@ -54,6 +54,8 @@ La web, la app móvil y el juego 3D de Godot comparten un solo backend en **Supa
 | `#/docente` | Panel docente | docente, admin |
 | `#/admin` | Panel de administración | admin |
 
+**Panel de administración (`#/admin`):** lista de usuarios con búsqueda (sin importar tildes) y filtros por rol y estado; crear cuentas con contraseña inicial y rol (función Edge `admin-crear-usuario`); editar nombre y rol; desactivar y reactivar (con confirmación); enviar el correo para elegir una contraseña nueva. El admin no puede quitarse su propio rol ni desactivarse (lo impide también la base de datos).
+
 Si se abre una página protegida sin sesión, aparece el formulario de entrar en el mismo sitio y, al entrar, la página pedida. El rol y si la cuenta está activa se leen siempre de la tabla `usuarios`; aun así, la seguridad real la pone la base de datos (RLS): ocultar una pantalla no basta.
 
 **Probar en local con Supabase en Docker:**

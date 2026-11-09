@@ -83,6 +83,12 @@ describe('permisos sobre usuarios', () => {
     ).rejects.toThrow(/check/)
   })
 
+  it('un docente sin alumnos solo se ve a sí mismo (no puede listar a todos)', async () => {
+    const docente = await bd.crearUsuario('docente')
+    const filas = await bd.como<{ id: string }>(docente, 'select id from public.usuarios')
+    expect(filas.map((f) => f.id)).toEqual([docente])
+  })
+
   it('el admin ve a todos los usuarios', async () => {
     const admin = await bd.crearUsuario('admin')
     const total = await bd.admin<{ n: number }>('select count(*)::int as n from public.usuarios')
