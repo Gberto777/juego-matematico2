@@ -31,6 +31,9 @@ describe('requisitoDe', () => {
     [{ name: 'account' }, 'sesion'],
     [{ name: 'admin' }, ['admin']],
     [{ name: 'teacherPanel' }, ['docente', 'admin']],
+    [{ name: 'teacherRoom', code: 'MUL-4821' }, ['docente', 'admin']],
+    [{ name: 'myRooms' }, 'sesion'],
+    [{ name: 'studentRoom', code: 'MUL-4821' }, 'sesion'],
   ])('%j → %j', (route, requisito) => {
     expect(requisitoDe(route)).toEqual(requisito)
   })

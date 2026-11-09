@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from '../../App'
 import type { ServicioAuth } from '../../supabase/servicioAuth'
+import type { ServicioSalas } from '../../supabase/servicioSalas'
 import type { ServicioUsuarios } from '../../supabase/servicioUsuarios'
 import type { Rol, Usuario } from '../../supabase/tipos'
 
@@ -75,9 +76,18 @@ const servicioUsuariosVacio: ServicioUsuarios = {
   enviarRecuperacion: async () => {},
 }
 
+/** Solo hace falta listar (vacío): las salas tienen sus propios tests. */
+const servicioSalasVacio = { listar: async () => [] } as unknown as ServicioSalas
+
 function abrir(hash: string, servicio: ServicioAuth | null) {
   window.location.hash = hash
-  return render(<App servicioAuth={servicio} servicioUsuarios={servicio ? servicioUsuariosVacio : null} />)
+  return render(
+    <App
+      servicioAuth={servicio}
+      servicioUsuarios={servicio ? servicioUsuariosVacio : null}
+      servicioSalas={servicio ? servicioSalasVacio : null}
+    />,
+  )
 }
 
 function escribir(etiqueta: RegExp, valor: string) {
@@ -111,8 +121,9 @@ describe('rutas protegidas por rol', () => {
     ['#/admin', 'alumno', 'No tienes permiso'],
     ['#/admin', 'docente', 'No tienes permiso'],
     ['#/docente', 'alumno', 'No tienes permiso'],
-    ['#/docente', 'docente', 'Panel docente'],
-    ['#/docente', 'admin', 'Panel docente'],
+    ['#/docente', 'docente', 'Mis salas'],
+    ['#/docente', 'admin', 'Todas las salas'],
+    ['#/docente/sala/MUL-4821', 'alumno', 'No tienes permiso'],
   ])('%s con rol %s → %s', async (hash, rol, titulo) => {
     const usuario = perfil(rol)
     abrir(hash, new ServicioFalso([usuario], usuario))

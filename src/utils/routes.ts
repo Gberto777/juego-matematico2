@@ -1,3 +1,4 @@
+import { esCodigoSalaValido, normalizarCodigoSala } from './codigoSala'
 import { isValidRoomCode, normalizeRoomCode } from './room'
 
 /**
@@ -18,6 +19,10 @@ export type Route =
   | { name: 'account' }
   | { name: 'admin' }
   | { name: 'teacherPanel' }
+  // Salas (Supabase): el docente gestiona una sala; el alumno ve sus salas y juega en una.
+  | { name: 'teacherRoom'; code: string }
+  | { name: 'myRooms' }
+  | { name: 'studentRoom'; code: string }
 
 /** Rutas sin parámetros: sección del hash → ruta. */
 const SIMPLE_ROUTES = {
@@ -27,7 +32,6 @@ const SIMPLE_ROUTES = {
   restablecer: { name: 'resetPassword' },
   cuenta: { name: 'account' },
   admin: { name: 'admin' },
-  docente: { name: 'teacherPanel' },
 } as const satisfies Record<string, Route>
 
 type SimpleRoute = (typeof SIMPLE_ROUTES)[keyof typeof SIMPLE_ROUTES]
@@ -36,8 +40,14 @@ const SIMPLE_HASHES = Object.fromEntries(
   Object.entries(SIMPLE_ROUTES).map(([section, route]) => [route.name, `#/${section}`]),
 ) as Record<SimpleRoute['name'], string>
 
+/** Código de sala de Supabase leído de la URL, o null si no tiene el formato TEM-1234. */
+function salaCode(raw: string): string | null {
+  const code = normalizarCodigoSala(decodeURIComponent(raw))
+  return esCodigoSalaValido(code) ? code : null
+}
+
 export function parseRoute(hash: string): Route {
-  const [section = '', rawCode = ''] = hash.replace(/^#\/?/, '').split('/')
+  const [section = '', rawCode = '', rawExtra = ''] = hash.replace(/^#\/?/, '').split('/')
   const code = normalizeRoomCode(decodeURIComponent(rawCode))
 
   if (Object.hasOwn(SIMPLE_ROUTES, section)) {
@@ -45,6 +55,14 @@ export function parseRoute(hash: string): Route {
   }
 
   switch (section) {
+    case 'docente': {
+      const sala = rawCode === 'sala' ? salaCode(rawExtra) : null
+      return sala ? { name: 'teacherRoom', code: sala } : { name: 'teacherPanel' }
+    }
+    case 'salas': {
+      const sala = salaCode(rawCode)
+      return sala ? { name: 'studentRoom', code: sala } : { name: 'myRooms' }
+    }
     case 'unirse':
       return { name: 'join', code }
     case 'sala':
@@ -68,6 +86,14 @@ export function routeToHash(route: Route): string {
       return '#/profesor'
     case 'dashboard':
       return `#/profesor/${route.code}`
+    case 'teacherPanel':
+      return '#/docente'
+    case 'teacherRoom':
+      return `#/docente/sala/${route.code}`
+    case 'myRooms':
+      return '#/salas'
+    case 'studentRoom':
+      return `#/salas/${route.code}`
     default:
       return SIMPLE_HASHES[route.name]
   }

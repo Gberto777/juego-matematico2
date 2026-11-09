@@ -20,6 +20,12 @@ describe('rutas', () => {
     ['#/cuenta', { name: 'account' }],
     ['#/admin', { name: 'admin' }],
     ['#/docente', { name: 'teacherPanel' }],
+    ['#/docente/sala/mul4821', { name: 'teacherRoom', code: 'MUL-4821' }],
+    ['#/docente/sala/MUL-4821', { name: 'teacherRoom', code: 'MUL-4821' }],
+    ['#/docente/sala/nope', { name: 'teacherPanel' }],
+    ['#/salas', { name: 'myRooms' }],
+    ['#/salas/MIX-1234', { name: 'studentRoom', code: 'MIX-1234' }],
+    ['#/salas/ABC234', { name: 'myRooms' }],
     ['#/constructor', { name: 'solo' }],
     ['#/__proto__', { name: 'solo' }],
   ])('%j', (hash, route) => {
@@ -40,6 +46,9 @@ describe('rutas', () => {
     { name: 'account' },
     { name: 'admin' },
     { name: 'teacherPanel' },
+    { name: 'teacherRoom', code: 'MUL-4821' },
+    { name: 'myRooms' },
+    { name: 'studentRoom', code: 'SUM-1000' },
   ])('ida y vuelta: %j', (route) => {
     expect(parseRoute(routeToHash(route))).toEqual(route)
   })

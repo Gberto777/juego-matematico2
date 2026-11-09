@@ -51,10 +51,15 @@ La web, la app móvil y el juego 3D de Godot comparten un solo backend en **Supa
 | `#/recuperar` | Pedir el correo para cambiar la contraseña | sin sesión |
 | `#/restablecer` | Elegir contraseña nueva (enlace del correo o desde «Mi cuenta») | con sesión |
 | `#/cuenta` | Mi cuenta | con sesión |
-| `#/docente` | Panel docente | docente, admin |
+| `#/docente` | Mis salas: crear (código, tema, dificultad, límite), abrir/cerrar y borrar | docente, admin |
+| `#/docente/sala/MUL-4821` | Panel de la sala: código para proyectar, quién está conectado y qué hace, quitar alumnos, editar | docente, admin |
+| `#/salas` | Unirme a una sala con el código y ver mis salas | con sesión |
+| `#/salas/MUL-4821` | Entrar (si no estaba) y jugar en la sala; sirve de enlace de invitación | con sesión |
 | `#/admin` | Panel de administración | admin |
 
 **Panel de administración (`#/admin`):** lista de usuarios con búsqueda (sin importar tildes) y filtros por rol y estado; crear cuentas con contraseña inicial y rol (función Edge `admin-crear-usuario`); editar nombre y rol; desactivar y reactivar (con confirmación); enviar el correo para elegir una contraseña nueva. El admin no puede quitarse su propio rol ni desactivarse (lo impide también la base de datos).
+
+**Salas (Supabase):** cada partida en una sala se guarda con `iniciar_partida`, cada respuesta (operación y número elegido) y `actualizar_partida` (ver `src/juego/reportadorPartida.ts`), así que el panel del docente ve en vivo el nivel, los puntos y las vidas de cada alumno (Supabase Realtime, más una recarga cada 20 s). El alumno avisa de que sigue conectado cada 30 s. El tema de la sala decide el nivel con el que empieza el juego web; la dificultad se guarda para Godot y la app, pero el juego web todavía no la usa.
 
 Si se abre una página protegida sin sesión, aparece el formulario de entrar en el mismo sitio y, al entrar, la página pedida. El rol y si la cuenta está activa se leen siempre de la tabla `usuarios`; aun así, la seguridad real la pone la base de datos (RLS): ocultar una pantalla no basta.
 

@@ -23,6 +23,22 @@ async function nuevaSala(docente: string, args: Record<string, unknown> = {}): P
   return sala
 }
 
+describe('contrato con la web', () => {
+  it('la relación sala → docente se llama salas_docente_id_fkey (la usa servicioSalas.listar)', async () => {
+    const filas = await bd.admin<{ conname: string }>(
+      `select conname from pg_constraint where conrelid = 'public.salas'::regclass and contype = 'f'`,
+    )
+    expect(filas.map((f) => f.conname)).toContain('salas_docente_id_fkey')
+  })
+
+  it('salas, miembros y partidas están en la publicación de Realtime', async () => {
+    const filas = await bd.admin<{ tablename: string }>(
+      `select tablename from pg_publication_tables where pubname = 'supabase_realtime' order by tablename`,
+    )
+    expect(filas.map((f) => f.tablename)).toEqual(['partidas', 'sala_miembros', 'salas'])
+  })
+})
+
 describe('crear_sala', () => {
   it('el docente crea una sala abierta con un código según el tema', async () => {
     const docente = await bd.crearUsuario('docente')

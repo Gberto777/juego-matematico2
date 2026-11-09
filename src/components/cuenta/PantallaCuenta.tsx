@@ -37,6 +37,11 @@ function PantallaCuenta({ usuario }: { usuario: Usuario }) {
             👩‍🏫 Panel docente
           </a>
         )}
+        {!esDocente && (
+          <a href="#/salas" className={claseAccion}>
+            🏫 Mis salas
+          </a>
+        )}
         <a href="#/" className={claseAccion}>
           🎮 Práctica rápida
         </a>

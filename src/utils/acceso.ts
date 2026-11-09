@@ -16,10 +16,13 @@ export function requisitoDe(route: Route): Requisito {
       return 'sin-sesion'
     case 'resetPassword':
     case 'account':
+    case 'myRooms':
+    case 'studentRoom':
       return 'sesion'
     case 'admin':
       return ['admin']
     case 'teacherPanel':
+    case 'teacherRoom':
       return ['docente', 'admin']
     default:
       return 'publico'
