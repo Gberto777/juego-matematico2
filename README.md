@@ -31,6 +31,17 @@ docker run --rm -p 8080:80 juego-matematico
 
 La app queda en http://localhost:8080. La configuración de Nginx (`nginx.conf`) redirige cualquier ruta desconocida a `index.html` (enrutamiento SPA).
 
+## Supabase (backend común de MathQuest)
+
+La web, la app móvil y el juego 3D de Godot comparten un solo backend en **Supabase**. El esquema, la seguridad (RLS) y el contrato de la API están en **[docs/arquitectura.md](docs/arquitectura.md)**. La migración desde Firebase se hace por fases; mientras tanto, el modo aula descrito abajo sigue en Firebase.
+
+| Script | Qué hace |
+| --- | --- |
+| `npm test` | Incluye los tests de la base de datos (`tests/db/`, PostgreSQL en memoria con PGlite, sin Docker) |
+| `npm run db:start` / `db:stop` | Supabase completo en local (necesita Docker Desktop) |
+| `npm run db:push` | Sube las migraciones al proyecto enlazado (`npx supabase link` antes) |
+| `npm run db:functions` | Despliega la función Edge `admin-crear-usuario` |
+
 ## Firebase
 
 La persistencia y el modo aula usan **Firebase** (Authentication anónima + Cloud Firestore).
@@ -105,9 +116,15 @@ Firestore usa caché persistente: si la wifi del aula falla, el juego sigue y la
 src/
   components/  componentes de UI (juego, unirse a sala, panel del profesor…)
   firebase/    inicialización de Firebase, repositorio de partidas y operaciones de salas
+  supabase/    cliente de Supabase, tipos de la base de datos y mensajes de error
   hooks/       hooks personalizados (lógica del juego, rutas, suscripciones en tiempo real)
   utils/       lógica pura y testeable (juego, validación, códigos de sala, rutas)
   App.tsx
   main.tsx
   index.css    entrada de Tailwind
+supabase/
+  migrations/  esquema SQL, políticas RLS y funciones RPC
+  functions/   funciones Edge (Deno)
+tests/db/      tests de la base de datos con PGlite
+docs/          arquitectura y contrato de la API
 ```

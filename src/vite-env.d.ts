@@ -1,6 +1,10 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  /** Backend común de MathQuest: Configuración del proyecto → API en el panel de Supabase. */
+  readonly VITE_SUPABASE_URL?: string
+  /** Clave pública ("publishable" o "anon"). Nunca la clave secreta / service_role. */
+  readonly VITE_SUPABASE_PUBLISHABLE_KEY?: string
   readonly VITE_FIREBASE_API_KEY?: string
   readonly VITE_FIREBASE_AUTH_DOMAIN?: string
   readonly VITE_FIREBASE_PROJECT_ID?: string

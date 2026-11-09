@@ -18,6 +18,15 @@ export default defineConfig({
   },
   test: {
     // Los tests no deben usar el proyecto real aunque exista .env.local.
-    env: { VITE_FIREBASE_PROJECT_ID: '', VITE_FIREBASE_API_KEY: '', VITE_FIREBASE_USE_EMULATORS: '' },
+    env: {
+      VITE_FIREBASE_PROJECT_ID: '',
+      VITE_FIREBASE_API_KEY: '',
+      VITE_FIREBASE_USE_EMULATORS: '',
+      VITE_SUPABASE_URL: '',
+      VITE_SUPABASE_PUBLISHABLE_KEY: '',
+    },
+    // Los tests de base de datos arrancan un PostgreSQL (PGlite) por archivo: tardan algo más.
+    testTimeout: 20000,
+    hookTimeout: 60000,
   },
 })
