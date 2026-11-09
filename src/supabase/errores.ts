@@ -35,9 +35,28 @@ export const MENSAJES_ERROR: Record<string, string> = {
   RETO_VENCIDO: 'El plazo de este reto ya terminó.',
 }
 
+/** Errores de Supabase Auth (login, registro, contraseñas), por su `code`. */
+export const MENSAJES_AUTH: Record<string, string> = {
+  invalid_credentials: 'Correo o contraseña incorrectos.',
+  email_not_confirmed: 'Confirma tu correo antes de entrar: revisa tu bandeja de entrada.',
+  user_already_exists: 'Ya existe una cuenta con ese correo.',
+  email_exists: 'Ya existe una cuenta con ese correo.',
+  email_address_invalid: 'El correo no es válido.',
+  weak_password: 'La contraseña es demasiado débil. Usa al menos 8 caracteres.',
+  same_password: 'La nueva contraseña debe ser distinta de la anterior.',
+  over_email_send_rate_limit: 'Se enviaron demasiados correos. Espera unos minutos.',
+  over_request_rate_limit: 'Demasiados intentos. Espera unos minutos.',
+  signup_disabled: 'El registro de cuentas está desactivado.',
+  user_banned: 'Tu cuenta está bloqueada.',
+  session_not_found: 'Tu sesión caducó. Vuelve a entrar.',
+  session_expired: 'Tu sesión caducó. Vuelve a entrar.',
+  otp_expired: 'El enlace caducó. Pide uno nuevo.',
+}
+
 interface ErrorConCodigo {
   message?: unknown
   code?: unknown
+  name?: unknown
 }
 
 /** Código de MathQuest (SALA_LLENA…) dentro de un error de Supabase, o null si no lo hay. */
@@ -45,14 +64,17 @@ export function codigoDeError(error: unknown): string | null {
   const mensaje = (error as ErrorConCodigo | null)?.message
   if (typeof mensaje !== 'string') return null
   const codigo = mensaje.trim()
-  return codigo in MENSAJES_ERROR ? codigo : null
+  return Object.hasOwn(MENSAJES_ERROR, codigo) ? codigo : null
 }
 
 /** Texto para el usuario. `porDefecto` se usa con errores inesperados (red caída, etc.). */
 export function mensajeDeError(error: unknown, porDefecto = 'Algo salió mal. Inténtalo de nuevo.'): string {
   const codigo = codigoDeError(error)
   if (codigo) return MENSAJES_ERROR[codigo]
-  if ((error as ErrorConCodigo | null)?.code === '42501') return 'No tienes permiso para hacer esto.'
-  if (error instanceof TypeError) return 'No hay conexión con el servidor.'
+  const { code, name } = (error ?? {}) as ErrorConCodigo
+  if (typeof code === 'string' && Object.hasOwn(MENSAJES_AUTH, code)) return MENSAJES_AUTH[code]
+  if (code === '42501') return 'No tienes permiso para hacer esto.'
+  // TypeError: fetch sin red. AuthRetryableFetchError: lo mismo dentro de Supabase Auth.
+  if (error instanceof TypeError || name === 'AuthRetryableFetchError') return 'No hay conexión con el servidor.'
   return porDefecto
 }

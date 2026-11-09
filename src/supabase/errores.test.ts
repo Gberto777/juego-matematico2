@@ -18,6 +18,18 @@ describe('errores de Supabase', () => {
     expect(mensajeDeError(new TypeError('Failed to fetch'))).toBe('No hay conexión con el servidor.')
   })
 
+  it('traduce los errores de Supabase Auth por su código', () => {
+    expect(mensajeDeError({ name: 'AuthApiError', code: 'invalid_credentials', message: 'Invalid login credentials' })).toBe(
+      'Correo o contraseña incorrectos.',
+    )
+    expect(mensajeDeError({ name: 'AuthApiError', code: 'user_already_exists', message: '...' })).toBe(
+      'Ya existe una cuenta con ese correo.',
+    )
+    expect(mensajeDeError({ name: 'AuthRetryableFetchError', message: 'Failed to fetch' })).toBe(
+      'No hay conexión con el servidor.',
+    )
+  })
+
   it('cualquier otro error usa el mensaje por defecto', () => {
     expect(mensajeDeError(new Error('xyz'), 'No se pudo guardar.')).toBe('No se pudo guardar.')
     expect(mensajeDeError(null)).toBe('Algo salió mal. Inténtalo de nuevo.')

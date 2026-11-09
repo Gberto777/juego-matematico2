@@ -13,6 +13,15 @@ describe('rutas', () => {
     ['#/profesor', { name: 'teacher' }],
     ['#/profesor/ABC234', { name: 'dashboard', code: 'ABC234' }],
     ['#/profesor/nope', { name: 'teacher' }],
+    ['#/entrar', { name: 'login' }],
+    ['#/registro', { name: 'register' }],
+    ['#/recuperar', { name: 'forgotPassword' }],
+    ['#/restablecer', { name: 'resetPassword' }],
+    ['#/cuenta', { name: 'account' }],
+    ['#/admin', { name: 'admin' }],
+    ['#/docente', { name: 'teacherPanel' }],
+    ['#/constructor', { name: 'solo' }],
+    ['#/__proto__', { name: 'solo' }],
   ])('%j', (hash, route) => {
     expect(parseRoute(hash)).toEqual(route)
   })
@@ -24,6 +33,13 @@ describe('rutas', () => {
     { name: 'classroom', code: 'ABC234' },
     { name: 'teacher' },
     { name: 'dashboard', code: 'ABC234' },
+    { name: 'login' },
+    { name: 'register' },
+    { name: 'forgotPassword' },
+    { name: 'resetPassword' },
+    { name: 'account' },
+    { name: 'admin' },
+    { name: 'teacherPanel' },
   ])('ida y vuelta: %j', (route) => {
     expect(parseRoute(routeToHash(route))).toEqual(route)
   })

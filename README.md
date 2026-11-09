@@ -42,6 +42,35 @@ La web, la app móvil y el juego 3D de Godot comparten un solo backend en **Supa
 | `npm run db:push` | Sube las migraciones al proyecto enlazado (`npx supabase link` antes) |
 | `npm run db:functions` | Despliega la función Edge `admin-crear-usuario` |
 
+### Cuentas y roles
+
+| Ruta | Pantalla | Quién |
+| --- | --- | --- |
+| `#/entrar` | Iniciar sesión | sin sesión |
+| `#/registro` | Crear cuenta (siempre como alumno) | sin sesión |
+| `#/recuperar` | Pedir el correo para cambiar la contraseña | sin sesión |
+| `#/restablecer` | Elegir contraseña nueva (enlace del correo o desde «Mi cuenta») | con sesión |
+| `#/cuenta` | Mi cuenta | con sesión |
+| `#/docente` | Panel docente | docente, admin |
+| `#/admin` | Panel de administración | admin |
+
+Si se abre una página protegida sin sesión, aparece el formulario de entrar en el mismo sitio y, al entrar, la página pedida. El rol y si la cuenta está activa se leen siempre de la tabla `usuarios`; aun así, la seguridad real la pone la base de datos (RLS): ocultar una pantalla no basta.
+
+**Probar en local con Supabase en Docker:**
+
+```sh
+npm run db:start     # la primera vez descarga las imágenes (varios minutos)
+```
+
+Copia la `API URL` y la `Publishable key` que muestra el comando a `.env.development.local` (solo se usa con `npm run dev`; no se sube a git):
+
+```sh
+VITE_SUPABASE_URL=http://127.0.0.1:54321
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+```
+
+Los correos (confirmación, recuperar contraseña) no salen a internet: se ven en Mailpit, en http://127.0.0.1:54324.
+
 ## Firebase
 
 La persistencia y el modo aula usan **Firebase** (Authentication anónima + Cloud Firestore).
