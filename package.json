@@ -15,8 +15,8 @@
     "deploy:rules": "npx firebase-tools deploy --only firestore:rules,firestore:indexes",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
-    "db:push": "supabase db push",
-    "db:functions": "supabase functions deploy admin-crear-usuario"
+    "db:push": "supabase db push --remote",
+    "db:functions": "supabase functions deploy admin-crear-usuario --use-api"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",

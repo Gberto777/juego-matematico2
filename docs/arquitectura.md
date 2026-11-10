@@ -188,8 +188,8 @@ Funciones de solo lectura: agregan los datos en el servidor y devuelven lo justo
    ```sh
    npx supabase login
    npx supabase link --project-ref <ref-del-proyecto>
-   npx supabase db push
-   npx supabase functions deploy admin-crear-usuario
+   npx supabase db push --remote
+   npx supabase functions deploy admin-crear-usuario --use-api
    ```
 
 3. *Authentication → URL Configuration*: pon como *Site URL* `https://gberto777.github.io/juego-matematico2/` y añade `http://localhost:5173/juego-matematico2/**` a las *Redirect URLs*.
