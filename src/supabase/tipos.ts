@@ -111,3 +111,109 @@ export interface ResultadoActualizarPartida {
   partida: Partida
   logros_nuevos: Logro[]
 }
+
+// --- Extras: rankings, estadísticas y retos (migración 20261110000000_extras.sql) ---
+
+export type PeriodoRanking = 'global' | 'semanal'
+
+export interface FilaRanking {
+  posicion: number
+  usuario_id: string
+  nombre: string
+  avatar: string
+  mejor_puntos: number
+  partidas: number
+  es_yo: boolean
+}
+
+export interface EstadisticaAlumno {
+  usuario_id: string
+  nombre: string
+  avatar: string
+  partidas: number
+  aciertos: number
+  respuestas: number
+  /** null si todavía no respondió nada. */
+  porcentaje_aciertos: number | null
+  mejor_puntos: number
+  nivel_max: number
+  ultima_partida: Fecha | null
+}
+
+export interface ErroresOperacion {
+  operacion: Operacion
+  respuestas: number
+  fallos: number
+  porcentaje_fallo: number
+}
+
+export interface OperacionDificil {
+  operacion: Operacion
+  a: number
+  b: number
+  resultado: number
+  intentos: number
+  fallos: number
+}
+
+export interface PartidaResumen {
+  id: string
+  origen: OrigenPartida
+  modo: ModoPartida
+  puntos: number
+  nivel: number
+  aciertos: number
+  respuestas_total: number
+  jefe_derrotado: boolean
+  terminada_en: Fecha
+}
+
+export interface EstadisticasUsuario {
+  partidas: number
+  puntos_max: number
+  nivel_max: number
+  aciertos: number
+  respuestas: number
+  precision: number | null
+  monedas: number
+  jefe_derrotado: boolean
+  minutos_jugados: number
+  por_origen: Record<OrigenPartida, number>
+  ultimas: PartidaResumen[]
+}
+
+export interface EstadisticasSistema {
+  usuarios: { total: number; admin: number; docente: number; alumno: number; inactivos: number; nuevos_semana: number }
+  salas: { total: number; abiertas: number }
+  partidas: { total: number; hoy: number; semana: number; en_curso: number; web: number; movil: number; godot: number }
+  respuestas: { total: number; precision: number | null }
+  por_dia: { fecha: string; partidas: number }[]
+}
+
+export interface RetoConProgreso extends Omit<Reto, 'sala_id' | 'docente_id'> {
+  cumplidos: number
+  miembros: number
+  mi_mejor: number
+  cumplido_por_mi: boolean
+}
+
+export interface ProgresoReto {
+  usuario_id: string
+  nombre: string
+  mejor_aciertos: number
+  intentos: number
+  cumplido: boolean
+}
+
+export interface RetoDiario {
+  fecha: string
+  tema: TemaOperacion
+  dificultad: Dificultad
+  meta_aciertos: number
+  mi_mejor: number
+  completado: boolean
+}
+
+export interface LogroConEstado extends Logro {
+  obtenido_en: Fecha | null
+}

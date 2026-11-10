@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../auth/contexto'
 import { mensajeDeError } from '../../supabase/errores'
+import type { ServicioEstadisticas } from '../../supabase/servicioEstadisticas'
 import type { CambiosUsuario, NuevoUsuario, ServicioUsuarios } from '../../supabase/servicioUsuarios'
+import ResumenSistema from '../estadisticas/ResumenSistema'
 import type { Rol, Usuario } from '../../supabase/tipos'
 import { NOMBRE_ROL } from '../../utils/acceso'
 import { emojiAvatar } from '../../utils/avatares'
@@ -20,6 +22,8 @@ interface PanelAdminProps {
   servicio: ServicioUsuarios
   /** El admin que está usando el panel. */
   yo: Usuario
+  /** Para el resumen del sistema (opcional). */
+  estadisticas?: ServicioEstadisticas | null
 }
 
 type Carga = { estado: 'cargando' } | { estado: 'listo'; usuarios: Usuario[] } | { estado: 'error'; mensaje: string }
@@ -172,7 +176,7 @@ function FilaUsuario({ usuario, esUnoMismo, alEditar, alCambiarActivo, alEnviarR
 }
 
 /** CRUD de usuarios: buscar, crear, editar nombre y rol, activar/desactivar y recuperar contraseña. */
-function PanelAdmin({ servicio, yo }: PanelAdminProps) {
+function PanelAdmin({ servicio, yo, estadisticas = null }: PanelAdminProps) {
   const { refrescarPerfil } = useAuth()
   const [carga, setCarga] = useState<Carga>({ estado: 'cargando' })
   const [filtros, setFiltros] = useState<FiltrosUsuarios>(FILTROS_INICIALES)
@@ -252,6 +256,8 @@ function PanelAdmin({ servicio, yo }: PanelAdminProps) {
           ⬅ Mi cuenta
         </a>
       </header>
+
+      {estadisticas && <ResumenSistema servicio={estadisticas} />}
 
       <Resumen usuarios={carga.usuarios} />
 

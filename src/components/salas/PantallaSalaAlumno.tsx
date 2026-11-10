@@ -1,11 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useCarga } from '../../hooks/useCarga'
 import { useGameLogic } from '../../hooks/useGameLogic'
 import { usePartidaReportada } from '../../hooks/usePartidaReportada'
 import { mensajeDeError } from '../../supabase/errores'
+import type { ServicioEstadisticas } from '../../supabase/servicioEstadisticas'
 import type { ServicioSalas } from '../../supabase/servicioSalas'
-import type { EstadoSala, Sala, Usuario } from '../../supabase/tipos'
+import type { EstadoSala, RetoConProgreso, Sala, Usuario } from '../../supabase/tipos'
+import { plazo } from '../../utils/retos'
+import { Panel, SegunCarga } from '../estadisticas/Comunes'
+import { TablaRanking } from '../estadisticas/Ranking'
 import { ICONO_TEMA, NOMBRE_TEMA, nivelInicialDeTema } from '../../utils/codigoSala'
 import { routeToHash } from '../../utils/routes'
+import AvisosPartida from '../AvisosPartida'
 import GameView from '../GameView'
 import SecondaryButton from '../SecondaryButton'
 import StatusMessage from '../StatusMessage'
@@ -18,6 +24,8 @@ interface PantallaSalaAlumnoProps {
   servicio: ServicioSalas
   codigo: string
   yo: Usuario
+  /** Para el ranking de la sala (opcional). */
+  estadisticas?: ServicioEstadisticas | null
 }
 
 type Entrada = { estado: 'entrando' } | { estado: 'dentro'; sala: Sala } | { estado: 'error'; mensaje: string }
@@ -26,7 +34,7 @@ type Entrada = { estado: 'entrando' } | { estado: 'dentro'; sala: Sala } | { est
  * Abrir #/salas/CÓDIGO une al alumno a la sala (si no estaba) y le deja jugar.
  * Así el enlace que comparte el docente sirve directamente de invitación.
  */
-function PantallaSalaAlumno({ servicio, codigo, yo }: PantallaSalaAlumnoProps) {
+function PantallaSalaAlumno({ servicio, codigo, yo, estadisticas = null }: PantallaSalaAlumnoProps) {
   const [entrada, setEntrada] = useState<Entrada>({ estado: 'entrando' })
 
   useEffect(() => {
@@ -60,13 +68,39 @@ function PantallaSalaAlumno({ servicio, codigo, yo }: PantallaSalaAlumnoProps) {
       </StatusMessage>
     )
   }
-  return <JuegoEnSala key={entrada.sala.id} servicio={servicio} sala={entrada.sala} yo={yo} />
+  return <JuegoEnSala key={entrada.sala.id} servicio={servicio} sala={entrada.sala} yo={yo} estadisticas={estadisticas} />
 }
 
-function JuegoEnSala({ servicio, sala, yo }: { servicio: ServicioSalas; sala: Sala; yo: Usuario }) {
-  const nivelInicial = nivelInicialDeTema(sala.tema)
+interface JuegoEnSalaProps {
+  servicio: ServicioSalas
+  sala: Sala
+  yo: Usuario
+  estadisticas: ServicioEstadisticas | null
+}
+
+function JuegoEnSala({ servicio, sala, yo, estadisticas }: JuegoEnSalaProps) {
+  // Con un reto elegido, la partida cuenta para ese reto y empieza en su tema.
+  const [reto, setReto] = useState<RetoConProgreso | null>(null)
+  const [pedidos, setPedidos] = useState(0)
+  const nivelInicial = nivelInicialDeTema(reto?.tema ?? sala.tema)
   const base = useGameLogic({ initialLevel: nivelInicial })
-  const { game, errorGuardado, logrosNuevos } = usePartidaReportada(base, { api: servicio, salaId: sala.id, nivelInicial })
+  const { game, errorGuardado, logrosNuevos } = usePartidaReportada(base, {
+    api: servicio,
+    salaId: sala.id,
+    retoId: reto?.id,
+    nivelInicial,
+  })
+  const [retos, recargarRetos] = useCarga(useCallback(() => servicio.retos(sala.id), [servicio, sala.id]))
+  // Al terminar una partida, el progreso en los retos puede haber cambiado.
+  useEffect(() => {
+    if (game.isGameOver) recargarRetos()
+  }, [game.isGameOver, recargarRetos])
+
+  // Empezar un reto: primero se elige (cambia el nivel y el reto de la partida) y luego se empieza.
+  const { startGame } = game
+  useEffect(() => {
+    if (pedidos > 0) startGame()
+  }, [pedidos]) // eslint-disable-line react-hooks/exhaustive-deps -- solo al pedirlo
   const [estadoSala, setEstadoSala] = useState<EstadoSala | 'fuera'>(sala.estado)
   const [saliendo, setSaliendo] = useState(false)
 
@@ -109,21 +143,10 @@ function JuegoEnSala({ servicio, sala, yo }: { servicio: ServicioSalas; sala: Sa
 
   return (
     <div className="flex w-full flex-col items-center gap-4">
-      {(errorGuardado || estadoSala === 'cerrada') && (
-        <p role="alert" className="max-w-md rounded-2xl bg-rose-900/40 px-4 py-2 text-center font-semibold text-rose-100">
-          {estadoSala === 'cerrada' ? '🔒 La sala está cerrada: tus resultados ya no se envían.' : `⚠️ ${errorGuardado}`}
-        </p>
-      )}
-      {logrosNuevos.length > 0 && (
-        <div role="status" className="flex max-w-md animate-pop flex-col gap-1 rounded-2xl bg-amber-300 px-5 py-3 text-amber-950">
-          <p className="font-bold">🏅 ¡Logro conseguido!</p>
-          {logrosNuevos.map((l) => (
-            <p key={l.id}>
-              {l.icono} <strong>{l.nombre}</strong>: {l.descripcion}
-            </p>
-          ))}
-        </div>
-      )}
+      <AvisosPartida
+        error={estadoSala === 'cerrada' ? 'La sala está cerrada: tus resultados ya no se envían.' : errorGuardado}
+        logrosNuevos={logrosNuevos}
+      />
 
       <GameView
         game={game}
@@ -138,11 +161,72 @@ function JuegoEnSala({ servicio, sala, yo }: { servicio: ServicioSalas; sala: Sa
           </div>
         }
         startActions={
-          <SecondaryButton onClick={salir} disabled={saliendo}>
-            {saliendo ? '⏳ Saliendo…' : '🚪 Salir de la sala'}
-          </SecondaryButton>
+          <div className="flex flex-col items-center gap-3">
+            {reto && (
+              <p className="rounded-full bg-amber-300 px-5 py-2 font-semibold text-amber-950">
+                🎯 Reto: {reto.titulo} · meta {reto.meta_aciertos} aciertos{' '}
+                <button type="button" onClick={() => setReto(null)} className="ml-2 underline underline-offset-2">
+                  Jugar sin reto
+                </button>
+              </p>
+            )}
+            <SecondaryButton onClick={salir} disabled={saliendo}>
+              {saliendo ? '⏳ Saliendo…' : '🚪 Salir de la sala'}
+            </SecondaryButton>
+          </div>
         }
       />
+
+      {game.isActive && reto && (
+        <p className="rounded-full bg-white/15 px-5 py-2 font-semibold text-white" role="status">
+          🎯 {reto.titulo}: {game.totalCorrect} de {reto.meta_aciertos} aciertos
+        </p>
+      )}
+
+      {!game.isActive && (
+        <div className="grid w-full max-w-5xl gap-5 lg:grid-cols-2">
+          <Panel titulo="Retos de tu docente">
+            <SegunCarga carga={retos} recargar={recargarRetos}>
+              {(lista) =>
+                lista.length === 0 ? (
+                  <p className="text-indigo-500">Tu docente todavía no ha puesto retos en esta sala.</p>
+                ) : (
+                  <ul className="flex flex-col gap-3" aria-label="Retos de la sala">
+                    {lista.map((r) => (
+                      <li key={r.id} className={`rounded-2xl p-4 ${r.cumplido_por_mi ? 'bg-emerald-50' : 'bg-indigo-50/60'}`}>
+                        <p className="font-bold">
+                          {ICONO_TEMA[r.tema]} {r.titulo}
+                        </p>
+                        <p className="text-sm text-indigo-600">
+                          {r.meta_aciertos} aciertos · {plazo(r)}
+                        </p>
+                        {r.descripcion && <p className="mt-1 text-sm">{r.descripcion}</p>}
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-sm font-semibold">
+                            {r.cumplido_por_mi ? '✅ ¡Cumplido!' : `Tu mejor: ${r.mi_mejor} de ${r.meta_aciertos}`}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReto(r)
+                              setPedidos((n) => n + 1)
+                            }}
+                            aria-label={`Jugar el reto ${r.titulo}`}
+                            className="rounded-full bg-indigo-600 px-4 py-1.5 text-sm font-bold text-white hover:bg-indigo-500"
+                          >
+                            ▶ Jugar
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )
+              }
+            </SegunCarga>
+          </Panel>
+          {estadisticas && <TablaRanking servicio={estadisticas} salaId={sala.id} titulo="Ranking de la sala" />}
+        </div>
+      )}
     </div>
   )
 }

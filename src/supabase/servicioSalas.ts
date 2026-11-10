@@ -4,9 +4,12 @@ import type {
   Dificultad,
   EstadoSala,
   MiembroSala,
+  ModoPartida,
   NuevaRespuesta,
   OrigenPartida,
   Partida,
+  ProgresoReto,
+  RetoConProgreso,
   ResultadoActualizarPartida,
   Sala,
   TemaOperacion,
@@ -31,6 +34,20 @@ export interface InicioPartida {
   origen: OrigenPartida
   nivelInicial: number
   salaId?: string
+  /** Partida de un reto del docente (la sala sale del reto). */
+  retoId?: string
+  /** Por defecto lo decide el servidor (práctica, sala o reto); "diario" para el reto del día. */
+  modo?: ModoPartida
+}
+
+export interface DatosReto {
+  titulo: string
+  descripcion: string
+  tema: TemaOperacion
+  dificultad: Dificultad
+  meta_aciertos: number
+  /** ISO 8601, o null si no tiene plazo. */
+  fecha_limite: string | null
 }
 
 export interface ProgresoPartida {
@@ -63,6 +80,10 @@ export interface ServicioSalas extends ApiPartidas {
   latido(salaId: string): Promise<EstadoSala | null>
   /** Avisa de cualquier cambio en la sala, sus miembros o sus partidas (Supabase Realtime). */
   escucharSala(salaId: string, alCambiar: () => void): () => void
+  retos(salaId: string): Promise<RetoConProgreso[]>
+  progresoReto(retoId: string): Promise<ProgresoReto[]>
+  crearReto(salaId: string, datos: DatosReto): Promise<void>
+  borrarReto(retoId: string): Promise<void>
 }
 
 interface FilaSala extends Sala {
@@ -160,12 +181,35 @@ export function crearServicioSalas(sb: SupabaseClient): ServicioSalas {
       }
     },
 
-    async iniciar({ origen, nivelInicial, salaId }) {
+    async retos(salaId) {
+      const { data, error } = await sb.rpc('retos_sala', { p_sala_id: salaId })
+      lanzar(error)
+      return ((data ?? []) as RetoConProgreso[]).map((r) => ({ ...r, cumplidos: Number(r.cumplidos), miembros: Number(r.miembros) }))
+    },
+
+    async progresoReto(retoId) {
+      const { data, error } = await sb.rpc('progreso_reto', { p_reto_id: retoId })
+      lanzar(error)
+      return ((data ?? []) as ProgresoReto[]).map((p) => ({ ...p, intentos: Number(p.intentos) }))
+    },
+
+    async crearReto(salaId, datos) {
+      const { error } = await sb.from('retos').insert({ sala_id: salaId, ...datos })
+      lanzar(error)
+    },
+
+    async borrarReto(retoId) {
+      const { error } = await sb.from('retos').delete().eq('id', retoId)
+      lanzar(error)
+    },
+
+    async iniciar({ origen, nivelInicial, salaId, retoId, modo }) {
       const { data, error } = await sb
         .rpc('iniciar_partida', {
           p_origen: origen,
           p_nivel_inicial: nivelInicial,
-          ...(salaId && { p_sala_id: salaId }),
+          ...(retoId ? { p_reto_id: retoId } : salaId && { p_sala_id: salaId }),
+          ...(modo && { p_modo: modo }),
         })
         .single<Partida>()
       lanzar(error)

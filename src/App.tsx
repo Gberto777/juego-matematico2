@@ -25,14 +25,19 @@ import { useHashRoute } from './hooks/useHashRoute'
 import { obtenerServicioAuth, type ServicioAuth } from './supabase/servicioAuth'
 import { obtenerServicioSalas, type ServicioSalas } from './supabase/servicioSalas'
 import { obtenerServicioUsuarios, type ServicioUsuarios } from './supabase/servicioUsuarios'
+import { obtenerServicioEstadisticas, type ServicioEstadisticas } from './supabase/servicioEstadisticas'
+import { requisitoDe } from './utils/acceso'
+import type { Route } from './utils/routes'
+import JuegoRetoDiario from './components/estadisticas/JuegoRetoDiario'
+import PantallaPerfil from './components/estadisticas/PantallaPerfil'
+import PantallaRanking from './components/estadisticas/Ranking'
 
 /** Servicios de Supabase de las pantallas (null si no hay Supabase configurado). */
 interface Servicios {
   usuarios: ServicioUsuarios | null
   salas: ServicioSalas | null
+  estadisticas: ServicioEstadisticas | null
 }
-import { requisitoDe } from './utils/acceso'
-import type { Route } from './utils/routes'
 
 type Navigate = (route: Route) => void
 
@@ -63,7 +68,7 @@ function RequireUser({ user, onBack, children }: { user: FirebaseUserState; onBa
 /** Pantallas de cuentas (Supabase), protegidas según la sesión y el rol. */
 function AccountScreen({ route, servicios }: { route: Route; servicios: Servicios }) {
   const requisito = requisitoDe(route)
-  const { usuarios: servicioUsuarios, salas } = servicios
+  const { usuarios: servicioUsuarios, salas, estadisticas } = servicios
   switch (route.name) {
     case 'login':
       return <RequiereAcceso requisito={requisito}>{() => <PantallaEntrar />}</RequiereAcceso>
@@ -82,7 +87,7 @@ function AccountScreen({ route, servicios }: { route: Route; servicios: Servicio
     case 'admin':
       return (
         <RequiereAcceso requisito={requisito}>
-          {(usuario) => usuario && servicioUsuarios && <PanelAdmin servicio={servicioUsuarios} yo={usuario} />}
+          {(usuario) => usuario && servicioUsuarios && <PanelAdmin servicio={servicioUsuarios} yo={usuario} estadisticas={estadisticas} />}
         </RequiereAcceso>
       )
     case 'teacherPanel':
@@ -94,7 +99,7 @@ function AccountScreen({ route, servicios }: { route: Route; servicios: Servicio
     case 'teacherRoom':
       return (
         <RequiereAcceso requisito={requisito}>
-          {() => salas && <PantallaSalaDocente key={route.code} servicio={salas} codigo={route.code} />}
+          {() => salas && <PantallaSalaDocente key={route.code} servicio={salas} codigo={route.code} estadisticas={estadisticas} />}
         </RequiereAcceso>
       )
     case 'myRooms':
@@ -102,8 +107,22 @@ function AccountScreen({ route, servicios }: { route: Route; servicios: Servicio
     case 'studentRoom':
       return (
         <RequiereAcceso requisito={requisito}>
-          {(usuario) => usuario && salas && <PantallaSalaAlumno key={route.code} servicio={salas} codigo={route.code} yo={usuario} />}
+          {(usuario) => usuario && salas && (
+            <PantallaSalaAlumno key={route.code} servicio={salas} codigo={route.code} yo={usuario} estadisticas={estadisticas} />
+          )}
         </RequiereAcceso>
+      )
+    case 'profile':
+      return (
+        <RequiereAcceso requisito={requisito}>
+          {(usuario) => usuario && estadisticas && <PantallaPerfil servicio={estadisticas} usuario={usuario} />}
+        </RequiereAcceso>
+      )
+    case 'ranking':
+      return <RequiereAcceso requisito={requisito}>{() => estadisticas && <PantallaRanking servicio={estadisticas} />}</RequiereAcceso>
+    case 'daily':
+      return (
+        <RequiereAcceso requisito={requisito}>{() => estadisticas && <JuegoRetoDiario estadisticas={estadisticas} api={salas} />}</RequiereAcceso>
       )
     default:
       return null
@@ -121,6 +140,9 @@ const ACCOUNT_ROUTES = new Set<Route['name']>([
   'teacherRoom',
   'myRooms',
   'studentRoom',
+  'profile',
+  'ranking',
+  'daily',
 ])
 
 interface ScreenProps {
@@ -147,6 +169,7 @@ function Screen({ route, navigate, user, servicios }: ScreenProps) {
         uid={user.status === 'ready' ? user.uid : null}
         onJoinClass={() => navigate({ name: 'join', code: '' })}
         onTeacher={() => navigate({ name: 'teacher' })}
+        api={servicios.salas}
       />
     )
   }
@@ -182,9 +205,10 @@ interface AppProps {
   /** Para los tests: servicio falso del panel de administración. */
   servicioUsuarios?: ServicioUsuarios | null
   servicioSalas?: ServicioSalas | null
+  servicioEstadisticas?: ServicioEstadisticas | null
 }
 
-function App({ servicioAuth, servicioUsuarios, servicioSalas }: AppProps) {
+function App({ servicioAuth, servicioUsuarios, servicioSalas, servicioEstadisticas }: AppProps) {
   const [route, navigate] = useHashRoute()
   const user = useFirebaseUser()
   const servicio = useMemo(() => (servicioAuth === undefined ? obtenerServicioAuth() : servicioAuth), [servicioAuth])
@@ -192,8 +216,9 @@ function App({ servicioAuth, servicioUsuarios, servicioSalas }: AppProps) {
     () => ({
       usuarios: servicioUsuarios === undefined ? obtenerServicioUsuarios() : servicioUsuarios,
       salas: servicioSalas === undefined ? obtenerServicioSalas() : servicioSalas,
+      estadisticas: servicioEstadisticas === undefined ? obtenerServicioEstadisticas() : servicioEstadisticas,
     }),
-    [servicioUsuarios, servicioSalas],
+    [servicioUsuarios, servicioSalas, servicioEstadisticas],
   )
   const goResetPassword = useCallback(() => navigate({ name: 'resetPassword' }), [navigate])
 

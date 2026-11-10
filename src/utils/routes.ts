@@ -26,6 +26,10 @@ export type Route =
   | { name: 'teacherRoom'; code: string }
   | { name: 'myRooms' }
   | { name: 'studentRoom'; code: string }
+  // Extras: perfil, ranking y reto del día.
+  | { name: 'profile' }
+  | { name: 'ranking' }
+  | { name: 'daily' }
 
 /** Rutas sin parámetros: sección del hash → ruta. */
 const SIMPLE_ROUTES = {
@@ -36,6 +40,9 @@ const SIMPLE_ROUTES = {
   restablecer: { name: 'resetPassword' },
   cuenta: { name: 'account' },
   admin: { name: 'admin' },
+  perfil: { name: 'profile' },
+  ranking: { name: 'ranking' },
+  'reto-diario': { name: 'daily' },
 } as const satisfies Record<string, Route>
 
 type SimpleRoute = (typeof SIMPLE_ROUTES)[keyof typeof SIMPLE_ROUTES]

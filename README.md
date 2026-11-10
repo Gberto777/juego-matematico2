@@ -60,10 +60,15 @@ Las imágenes de `public/inicio/` son capturas reales de MathQuest Runner hechas
 | `#/docente` | Mis salas: crear (código, tema, dificultad, límite), abrir/cerrar y borrar | docente, admin |
 | `#/docente/sala/MUL-4821` | Panel de la sala: código para proyectar, quién está conectado y qué hace, quitar alumnos, editar | docente, admin |
 | `#/salas` | Unirme a una sala con el código y ver mis salas | con sesión |
-| `#/salas/MUL-4821` | Entrar (si no estaba) y jugar en la sala; sirve de enlace de invitación | con sesión |
+| `#/salas/MUL-4821` | Entrar (si no estaba) y jugar en la sala o un reto del docente; ranking de la sala | con sesión |
+| `#/perfil` | Mis números, reto del día, logros, dónde fallo más e historial; cambiar nombre y avatar | con sesión |
+| `#/ranking` | Ranking global y de esta semana (web, app y juego 3D juntos) | con sesión |
+| `#/reto-diario` | Práctica con el reto del día (igual para todos, cambia cada día) | con sesión |
 | `#/admin` | Panel de administración | admin |
 
 **Panel de administración (`#/admin`):** lista de usuarios con búsqueda (sin importar tildes) y filtros por rol y estado; crear cuentas con contraseña inicial y rol (función Edge `admin-crear-usuario`); editar nombre y rol; desactivar y reactivar (con confirmación); enviar el correo para elegir una contraseña nueva. El admin no puede quitarse su propio rol ni desactivarse (lo impide también la base de datos).
+
+**Panel docente de cada sala:** pestañas *En vivo* (quién está conectado), *Progreso* (por alumno, fallos por operación, las cuentas más falladas y **Exportar a Excel**, con `write-excel-file` cargado solo al pulsar el botón), *Retos* (crear con tema, meta de aciertos y plazo; quién lo cumplió) y *Ranking*. El admin ve además un **resumen del sistema** en `#/admin`. Con la sesión iniciada, la práctica rápida (`#/practica`) también guarda cada partida, así cuenta para rankings y logros.
 
 **Salas (Supabase):** cada partida en una sala se guarda con `iniciar_partida`, cada respuesta (operación y número elegido) y `actualizar_partida` (ver `src/juego/reportadorPartida.ts`), así que el panel del docente ve en vivo el nivel, los puntos y las vidas de cada alumno (Supabase Realtime, más una recarga cada 20 s). El alumno avisa de que sigue conectado cada 30 s. El tema de la sala decide el nivel con el que empieza el juego web; la dificultad se guarda para Godot y la app, pero el juego web todavía no la usa.
 

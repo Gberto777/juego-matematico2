@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import { useSalaEnVivo } from '../../hooks/useSalaEnVivo'
 import { mensajeDeError } from '../../supabase/errores'
+import type { ServicioEstadisticas } from '../../supabase/servicioEstadisticas'
 import type { ServicioSalas } from '../../supabase/servicioSalas'
+import PanelProgreso from '../estadisticas/PanelProgreso'
+import PanelRetos from '../estadisticas/PanelRetos'
+import { TablaRanking } from '../estadisticas/Ranking'
 import type { MiembroSala, Sala } from '../../supabase/tipos'
 import { emojiAvatar } from '../../utils/avatares'
 import { ICONO_TEMA, NOMBRE_DIFICULTAD, NOMBRE_TEMA, haceCuanto } from '../../utils/codigoSala'
@@ -15,7 +19,17 @@ import { EstadoSalaInsignia } from './PanelDocente'
 interface PantallaSalaDocenteProps {
   servicio: ServicioSalas
   codigo: string
+  /** Progreso y ranking de la sala; sin él solo se muestran "En vivo" y "Retos". */
+  estadisticas?: ServicioEstadisticas | null
 }
+
+type Pestaña = 'vivo' | 'progreso' | 'retos' | 'ranking'
+const PESTAÑAS: { id: Pestaña; texto: string }[] = [
+  { id: 'vivo', texto: '🟢 En vivo' },
+  { id: 'progreso', texto: '📈 Progreso' },
+  { id: 'retos', texto: '🎯 Retos' },
+  { id: 'ranking', texto: '🏆 Ranking' },
+]
 
 const claseBoton =
   'rounded-full px-4 py-1.5 text-sm font-bold ring-2 transition-colors focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:opacity-40'
@@ -105,8 +119,9 @@ function Cabecera({ sala }: { sala: Sala }) {
 }
 
 /** Panel de una sala: código para proyectar, quién está conectado y qué está haciendo, y controles. */
-function PantallaSalaDocente({ servicio, codigo }: PantallaSalaDocenteProps) {
+function PantallaSalaDocente({ servicio, codigo, estadisticas = null }: PantallaSalaDocenteProps) {
   const [vivo, recargar] = useSalaEnVivo(servicio, codigo)
+  const [pestaña, setPestaña] = useState<Pestaña>('vivo')
   const [editando, setEditando] = useState(false)
   const [aviso, setAviso] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null)
   const [cambiandoEstado, setCambiandoEstado] = useState(false)
@@ -219,7 +234,28 @@ function PantallaSalaDocente({ servicio, codigo }: PantallaSalaDocenteProps) {
         )}
       </div>
 
-      <div className="overflow-hidden rounded-3xl bg-white shadow-[0_6px_0_0_rgba(0,0,0,0.15)]">
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Vistas de la sala">
+        {PESTAÑAS.filter((p) => p.id === 'vivo' || p.id === 'retos' || estadisticas).map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            role="tab"
+            aria-selected={pestaña === p.id}
+            onClick={() => setPestaña(p.id)}
+            className={`rounded-full px-5 py-2 font-bold transition-colors ${
+              pestaña === p.id ? 'bg-white text-indigo-800' : 'text-white ring-2 ring-white/40 hover:bg-white/15'
+            }`}
+          >
+            {p.texto}
+          </button>
+        ))}
+      </div>
+
+      {pestaña === 'progreso' && estadisticas && <PanelProgreso servicio={estadisticas} sala={sala} />}
+      {pestaña === 'retos' && <PanelRetos servicio={servicio} sala={sala} />}
+      {pestaña === 'ranking' && estadisticas && <TablaRanking servicio={estadisticas} salaId={sala.id} titulo="Ranking de la sala" />}
+
+      <div className="overflow-hidden rounded-3xl bg-white shadow-[0_6px_0_0_rgba(0,0,0,0.15)]" hidden={pestaña !== 'vivo'}>
         {miembros.length === 0 ? (
           <p className="px-5 py-10 text-center text-indigo-500">
             Todavía no ha entrado nadie. Proyecta el código para que tus alumnos se unan.

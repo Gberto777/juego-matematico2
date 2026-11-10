@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ReportadorPartida } from '../juego/reportadorPartida'
 import { mensajeDeError } from '../supabase/errores'
 import type { ApiPartidas } from '../supabase/servicioSalas'
-import type { Logro } from '../supabase/tipos'
+import type { Logro, ModoPartida } from '../supabase/tipos'
 import { parseAnswer, type Level } from '../utils/mathUtils'
 import type { UseGameLogicResult } from './useGameLogic'
 
@@ -10,6 +10,9 @@ interface Opciones {
   /** null: no se guarda nada (sin Supabase o sin sesión). */
   api: ApiPartidas | null
   salaId?: string
+  /** Partida de un reto del docente. */
+  retoId?: string
+  modo?: ModoPartida
   /** Nivel con el que se empieza si startGame() no indica otro. */
   nivelInicial?: Level
 }
@@ -27,7 +30,10 @@ export interface PartidaReportada {
  * Guarda en Supabase las partidas del juego web: cada respuesta (operación y número elegido)
  * y el progreso tras cada una, para que el docente lo vea en vivo y cuenten para logros y rankings.
  */
-export function usePartidaReportada(game: UseGameLogicResult, { api, salaId, nivelInicial }: Opciones): PartidaReportada {
+export function usePartidaReportada(
+  game: UseGameLogicResult,
+  { api, salaId, retoId, modo, nivelInicial }: Opciones,
+): PartidaReportada {
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null)
   const [logrosNuevos, setLogrosNuevos] = useState<Logro[]>([])
 
@@ -54,10 +60,10 @@ export function usePartidaReportada(game: UseGameLogicResult, { api, salaId, niv
       const nivel = level ?? nivelInicial ?? 1
       setErrorGuardado(null)
       setLogrosNuevos([])
-      reportador?.iniciar({ origen: 'web', nivelInicial: nivel, salaId })
+      reportador?.iniciar({ origen: 'web', nivelInicial: nivel, salaId, retoId, modo })
       startGame(nivel)
     },
-    [reportador, salaId, nivelInicial, startGame],
+    [reportador, salaId, retoId, modo, nivelInicial, startGame],
   )
 
   const responder = useCallback(

@@ -42,7 +42,13 @@ function PantallaCuenta({ usuario }: { usuario: Usuario }) {
             🏫 Mis salas
           </a>
         )}
-        <a href="#/" className={claseAccion}>
+        <a href="#/perfil" className={claseAccion}>
+          📊 Mi perfil y logros
+        </a>
+        <a href="#/ranking" className={claseAccion}>
+          🏆 Ranking
+        </a>
+        <a href="#/practica" className={claseAccion}>
           🎮 Práctica rápida
         </a>
         <a href="#/restablecer" className={claseAccion}>

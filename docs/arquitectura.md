@@ -160,15 +160,25 @@ Los errores de las RPC llegan como `{ "code": "P0001", "message": "SALA_LLENA" }
 
 Función Edge `admin-crear-usuario`: `NO_AUTENTICADO` (401), `SOLO_ADMIN` (403), `CUERPO_INVALIDO`, `EMAIL_INVALIDO`, `PASSWORD_INVALIDA`, `NOMBRE_INVALIDO`, `ROL_INVALIDO` (400), `EMAIL_YA_EXISTE` (409).
 
-### Pendiente (fase de extras)
+### Rankings, estadísticas y retos (migración `20261110000000_extras.sql`)
 
-Se añadirán como migraciones nuevas, sin cambiar lo anterior:
+Funciones de solo lectura: agregan los datos en el servidor y devuelven lo justo, así nadie necesita leer partidas ajenas para ver un ranking.
 
-- `ranking(p_periodo 'global'|'semanal', p_sala_id?, p_limite)`: rankings globales, semanales y por sala.
-- `estadisticas_sala(p_sala_id)` y `errores_por_operacion(...)`: panel docente y exportación a Excel.
-- `estadisticas_usuario(p_usuario_id?)`: perfil del jugador.
-- `estadisticas_sistema()`: panel del admin.
-- `reto_diario()`: el reto del día para la app móvil (igual para todos, cambia cada día).
+| Función | Parámetros | Devuelve | Quién |
+| --- | --- | --- | --- |
+| `ranking` | `p_periodo` = `global` o `semanal` (desde el lunes), `p_sala_id`?, `p_limite`=20 (máx. 100) | lista: `posicion`, `usuario_id`, `nombre`, `avatar`, `mejor_puntos`, `partidas`, `es_yo` | cualquiera activo; con sala, solo quien la ve |
+| `estadisticas_sala` | `p_sala_id` | por alumno: `partidas`, `aciertos`, `respuestas`, `porcentaje_aciertos`, `mejor_puntos`, `nivel_max`, `ultima_partida` | docente de la sala, admin |
+| `errores_por_operacion` | `p_sala_id`?, `p_usuario_id`? (sin nada: los propios) | por operación: `respuestas`, `fallos`, `porcentaje_fallo` | sala: su docente; usuario: él mismo o admin |
+| `operaciones_dificiles` | igual que la anterior + `p_limite`=10, `p_minimo`=2 intentos | las cuentas más falladas: `operacion`, `a`, `b`, `resultado`, `intentos`, `fallos` | igual |
+| `estadisticas_usuario` | `p_usuario_id`? | `{ partidas, puntos_max, nivel_max, aciertos, respuestas, precision, monedas, jefe_derrotado, minutos_jugados, por_origen: { web, movil, godot }, ultimas: [10 partidas] }` | él mismo, admin, sus docentes |
+| `estadisticas_sistema` | — | `{ usuarios, salas, partidas, respuestas, por_dia: [14 días] }` | admin |
+| `retos_sala` | `p_sala_id` | retos con `cumplidos`, `miembros`, `mi_mejor`, `cumplido_por_mi` | docente, admin, miembros |
+| `progreso_reto` | `p_reto_id` | por alumno: `mejor_aciertos`, `intentos`, `cumplido` | docente de la sala, admin |
+| `reto_diario` | `p_fecha`? (hoy) | `{ fecha, tema, dificultad, meta_aciertos, mi_mejor, completado }` | cualquiera activo |
+
+- **Un reto se cumple** con una partida terminada con `p_reto_id` que llegue a `meta_aciertos`.
+- **El reto del día** es igual para todos y cambia cada día. Se juega con `iniciar_partida(p_modo => 'diario')` y se cumple con una partida terminada ese día que llegue a la meta.
+- Errores nuevos: `PERIODO_INVALIDO`, `SIN_ACCESO`.
 
 ## Puesta en marcha
 

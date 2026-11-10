@@ -18,6 +18,9 @@ export function requisitoDe(route: Route): Requisito {
     case 'account':
     case 'myRooms':
     case 'studentRoom':
+    case 'profile':
+    case 'ranking':
+    case 'daily':
       return 'sesion'
     case 'admin':
       return ['admin']

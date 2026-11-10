@@ -29,6 +29,8 @@ export const MENSAJES_ERROR: Record<string, string> = {
   LIMITE_INVALIDO: 'El límite de jugadores debe estar entre 1 y 100.',
   SIN_CODIGO_LIBRE: 'No se pudo generar un código de sala. Inténtalo de nuevo.',
   SIN_ACCESO_A_SALA: 'No tienes acceso a esta sala.',
+  SIN_ACCESO: 'No tienes acceso a estos datos.',
+  PERIODO_INVALIDO: 'Ese periodo de ranking no existe.',
   NO_ES_MIEMBRO: 'Primero tienes que unirte a la sala.',
   // Partidas y retos
   PARTIDA_NO_EXISTE: 'No se encontró la partida.',

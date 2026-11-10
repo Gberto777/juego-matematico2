@@ -94,6 +94,10 @@ class SalasFalsas implements ServicioSalas {
       this.alCambiarSala = null
     }
   })
+  retos = vi.fn(async () => [])
+  progresoReto = vi.fn(async () => [])
+  crearReto = vi.fn(async () => {})
+  borrarReto = vi.fn(async () => {})
   iniciar = vi.fn(async () => ({ id: 'partida-1' }) as Partida)
   enviarRespuestas = vi.fn(async (_respuestas: NuevaRespuesta[]) => {})
   actualizar = vi.fn(async () => ({ partida: { id: 'partida-1' } as Partida, logros_nuevos: [] }))
@@ -249,6 +253,34 @@ describe('alumno', () => {
       expect.objectContaining({ partida_id: 'partida-1', operacion: 'suma', a: Number(a), b: Number(b), respuesta: Number(a) + Number(b) }),
     ])
     expect(servicio.actualizar).toHaveBeenCalledWith('partida-1', { puntos: 10, nivel: 1, vidas: 3, terminar: false })
+  })
+
+  it('el alumno ve los retos de su docente y juega uno', async () => {
+    const servicio = new SalasFalsas([sala()])
+    servicio.retos.mockResolvedValue([
+      {
+        id: 'r1',
+        titulo: 'Tablas del 7',
+        descripcion: 'Para el viernes',
+        tema: 'multiplicacion',
+        dificultad: 'media',
+        meta_aciertos: 15,
+        fecha_limite: null,
+        creado_en: '',
+        cumplidos: 0,
+        miembros: 3,
+        mi_mejor: 6,
+        cumplido_por_mi: false,
+      },
+    ] as never)
+    render(<PantallaSalaAlumno servicio={servicio} codigo="SUM-1234" yo={ALUMNO} />)
+    expect(await screen.findByText('Tu mejor: 6 de 15')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Jugar el reto Tablas del 7' }))
+    await waitFor(() =>
+      expect(servicio.iniciar).toHaveBeenCalledWith({ origen: 'web', nivelInicial: 3, salaId: 's1', retoId: 'r1', modo: undefined }),
+    )
+    expect(await screen.findByText(/tablas del 7: 0 de 15 aciertos/i)).toBeTruthy()
   })
 
   it('si el docente lo quitó de la sala, se lo dice', async () => {
