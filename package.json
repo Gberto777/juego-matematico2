@@ -11,13 +11,22 @@
     "test:watch": "vitest",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "deploy:rules": "npx firebase-tools deploy --only firestore:rules,firestore:indexes",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:push": "supabase db push --remote",
+    "db:functions": "supabase functions deploy admin-crear-usuario --use-api"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.119.0",
+    "firebase": "^12.19.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "write-excel-file": "^4.1.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^24.13.3",
@@ -27,6 +36,7 @@
     "gh-pages": "^6.3.0",
     "jsdom": "^30.1.2",
     "oxlint": "^1.81.0",
+    "supabase": "^3.1.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",

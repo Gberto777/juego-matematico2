@@ -1,0 +1,162 @@
+rules_version = '2';
+
+// Reglas de seguridad del Juego Matemático (Actividad 3: seguridad estricta).
+// Despliegue: `npm run deploy:rules`
+//
+//   users/{uid}                  récords y nombre del alumno (solo su dueño)
+//   users/{uid}/saves/{slot}     partida en curso (solo su dueño)
+//   rooms/{code}                 sala del profesor
+//   rooms/{code}/players/{uid}   métricas de cada alumno (escribe el alumno, lee el alumno y el profesor)
+//
+// Principios:
+//   1. Autenticación obligatoria: sin `request.auth` no se lee ni se escribe nada.
+//   2. Lista blanca de campos: solo se aceptan las claves esperadas.
+//   3. Validación de tipos y rangos: textos con longitud máxima y números enteros >= 0,
+//      para evitar inyecciones de código, desbordamientos y valores negativos.
+//   4. Todo lo que no está permitido explícitamente queda denegado.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Utilidades ---
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isUser(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // Entero (nunca texto ni decimal) dentro de [min, max].
+    function isIntIn(v, min, max) {
+      return v is int && v >= min && v <= max;
+    }
+
+    // Entero obligatorio mayor o igual que cero.
+    function isNonNegativeInt(v) {
+      return v is int && v >= 0;
+    }
+
+    // Texto no vacío de como máximo `max` caracteres.
+    function isShortString(v, max) {
+      return v is string && v.size() >= 1 && v.size() <= max;
+    }
+
+    // Denegación por defecto para cualquier ruta no listada abajo.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Datos privados de cada usuario ---
+
+    match /users/{uid} {
+      allow read, write: if isUser(uid);
+
+      match /saves/{slot} {
+        allow read, write: if isUser(uid);
+      }
+    }
+
+    // --- Salas ---
+
+    match /rooms/{code} {
+      function isOwner() {
+        return signedIn() && resource.data.teacherId == request.auth.uid;
+      }
+
+      // El código de sala (id del documento) tiene exactamente 6 caracteres del alfabeto sin ambigüedades.
+      function isValidCode() {
+        return code.size() == 6 && code.matches('^[A-HJKMNP-Z2-9]{6}$');
+      }
+
+      // Cualquier usuario autenticado con el código puede comprobar que la sala existe,
+      // pero solo el profesor puede listar sus propias salas.
+      allow get: if signedIn();
+      allow list: if isOwner();
+
+      allow create: if signedIn()
+        && isValidCode()
+        && request.resource.data.keys().hasOnly(['name', 'teacherId', 'createdBy', 'status', 'createdAt'])
+        && request.resource.data.keys().hasAll(['name', 'teacherId', 'createdBy', 'status', 'createdAt'])
+        // Nadie puede crear una sala a nombre de otro usuario.
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.teacherId == request.auth.uid
+        && request.resource.data.status == 'open'
+        && isShortString(request.resource.data.name, 40)
+        && request.resource.data.createdAt == request.time;
+
+      // El creador y el código no se pueden cambiar; solo el nombre y el estado.
+      allow update: if isOwner()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'status'])
+        && request.resource.data.status in ['open', 'closed']
+        && isShortString(request.resource.data.name, 40);
+
+      allow delete: if isOwner();
+
+      // --- Alumnos de la sala ---
+
+      match /players/{uid} {
+        function room() {
+          return get(/databases/$(database)/documents/rooms/$(code)).data;
+        }
+
+        function isTeacher() {
+          return signedIn() && room().teacherId == request.auth.uid;
+        }
+
+        function roomIsOpen() {
+          return room().status == 'open';
+        }
+
+        function isValidPlayer(d) {
+          // Nombre: texto de 1 a 20 caracteres.
+          return isShortString(d.name, 20)
+            && d.status in ['waiting', 'playing', 'finished']
+            // level, lives y score: enteros obligatorios >= 0 (con techo razonable).
+            && isNonNegativeInt(d.level) && d.level <= 4
+            && isNonNegativeInt(d.lives) && d.lives <= 3
+            && isNonNegativeInt(d.score) && d.score <= 1000000
+            && isIntIn(d.totalCorrect, 0, 1000000)
+            && isIntIn(d.totalAnswered, 0, 1000000)
+            && d.totalCorrect <= d.totalAnswered
+            && isIntIn(d.gamesPlayed, 0, 1000000)
+            && isIntIn(d.bestScore, 0, 1000000)
+            && isIntIn(d.bestLevel, 0, 4)
+            && isIntIn(d.correctAllGames, 0, 100000000)
+            && isIntIn(d.answeredAllGames, 0, 100000000)
+            && d.correctAllGames <= d.answeredAllGames
+            && d.updatedAt == request.time;
+        }
+
+        allow read: if isUser(uid) || isTeacher();
+
+        allow create: if isUser(uid)
+          && roomIsOpen()
+          && request.resource.data.keys().hasOnly([
+            'name', 'status', 'score', 'level', 'lives', 'totalCorrect', 'totalAnswered',
+            'gamesPlayed', 'bestScore', 'bestLevel', 'correctAllGames', 'answeredAllGames',
+            'joinedAt', 'updatedAt'
+          ])
+          && isValidPlayer(request.resource.data)
+          && request.resource.data.gamesPlayed == 0
+          && request.resource.data.joinedAt == request.time;
+
+        allow update: if isUser(uid)
+          && roomIsOpen()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'name', 'status', 'score', 'level', 'lives', 'totalCorrect', 'totalAnswered',
+            'gamesPlayed', 'bestScore', 'bestLevel', 'correctAllGames', 'answeredAllGames',
+            'updatedAt'
+          ])
+          && isValidPlayer(request.resource.data)
+          // Los acumulados solo crecen, y de partida en partida.
+          && request.resource.data.gamesPlayed in [resource.data.gamesPlayed, resource.data.gamesPlayed + 1]
+          && request.resource.data.bestScore >= resource.data.bestScore
+          && request.resource.data.answeredAllGames >= resource.data.answeredAllGames;
+
+        // El profesor puede expulsar a un alumno.
+        allow delete: if isTeacher();
+      }
+    }
+  }
+}

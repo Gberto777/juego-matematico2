@@ -1,5 +1,6 @@
 import type { Level } from '../utils/mathUtils'
 import GameButton from './GameButton'
+import SecondaryButton from './SecondaryButton'
 
 interface GameOverScreenProps {
   score: number
@@ -60,13 +61,7 @@ function GameOverScreen({
         <GameButton onClick={onRetry} autoFocus>
           🔄 Volver a intentar
         </GameButton>
-        <button
-          type="button"
-          onClick={onMenu}
-          className="rounded-full px-6 py-2 text-lg font-semibold text-white/90 ring-2 ring-white/40 transition-colors hover:bg-white/15 focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-white"
-        >
-          🏠 Ir al inicio
-        </button>
+        <SecondaryButton onClick={onMenu}>🏠 Ir al inicio</SecondaryButton>
       </div>
     </section>
   )

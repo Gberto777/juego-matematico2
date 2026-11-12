@@ -1,9 +1,16 @@
+import type { ReactNode } from 'react'
 import type { GameRecords } from '../utils/gameLogic'
 import GameButton from './GameButton'
 
 interface StartScreenProps {
   records: GameRecords
   onStart: () => void
+  /** Mientras se cargan los datos guardados no se puede empezar. */
+  isLoading?: boolean
+  /** Contenido sobre el título (p. ej. la sala en la que se juega). */
+  banner?: ReactNode
+  /** Acciones extra bajo el botón de comenzar. */
+  children?: ReactNode
 }
 
 const LEVELS = [
@@ -40,9 +47,11 @@ function RecordsPanel({ records }: { records: GameRecords }) {
   )
 }
 
-function StartScreen({ records, onStart }: StartScreenProps) {
+function StartScreen({ records, onStart, isLoading = false, banner, children }: StartScreenProps) {
   return (
     <section className="flex flex-col items-center gap-6 text-center sm:gap-8">
+      {banner}
+
       <div className="animate-float text-6xl sm:text-8xl" aria-hidden="true">
         🧮
       </div>
@@ -70,11 +79,19 @@ function StartScreen({ records, onStart }: StartScreenProps) {
         ))}
       </ul>
 
-      <RecordsPanel records={records} />
+      {isLoading ? (
+        <p className="w-full max-w-md rounded-3xl bg-indigo-950/30 p-4 text-indigo-100 ring-1 ring-white/20">
+          ⏳ Cargando tu progreso…
+        </p>
+      ) : (
+        <RecordsPanel records={records} />
+      )}
 
-      <GameButton onClick={onStart} autoFocus>
+      <GameButton onClick={onStart} disabled={isLoading} autoFocus>
         ▶ Comenzar Juego
       </GameButton>
+
+      {children}
     </section>
   )
 }
