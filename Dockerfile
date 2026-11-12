@@ -9,7 +9,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
-# vite.config.ts usa la base de GitHub Pages (/juego-matematico/); aquí Nginx sirve en la raíz
+# vite.config.ts usa la base de GitHub Pages (/mathquest-web/); aquí Nginx sirve en la raíz
 RUN npm run build -- --base=/
 
 # --- Etapa 2: servir los archivos estáticos con Nginx ---
